@@ -15,7 +15,7 @@ import {
   Activity, LogOut, Search, AlertTriangle, AlertCircle,
   Target, ChevronRight, Settings, Clock, Building2,
   BarChart3, Menu, Plus, Users, Briefcase, Home, MoreVertical,
-  Edit2, Trash2, X
+  Edit2, Trash2, X, CheckCircle
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
