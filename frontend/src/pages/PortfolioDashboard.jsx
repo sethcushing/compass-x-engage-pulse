@@ -607,6 +607,13 @@ export default function PortfolioDashboard() {
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem 
+                        onClick={(e) => { e.stopPropagation(); handleCompleteEngagement(eng); }}
+                        className="text-emerald-600"
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Mark Complete
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
                         onClick={(e) => { e.stopPropagation(); handleDeleteEngagement(eng.engagement_id); }}
                         className="text-red-600"
                       >
