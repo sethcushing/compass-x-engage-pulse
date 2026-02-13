@@ -163,6 +163,7 @@ class Engagement(BaseModel):
     last_pulse_date: Optional[datetime] = None
     health_score: int = 100
     is_active: bool = True
+    completed_date: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
