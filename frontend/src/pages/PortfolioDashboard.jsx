@@ -9,11 +9,13 @@ import { Textarea } from "../components/ui/textarea";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
-import { Sheet, SheetContent, SheetTrigger } from "../components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../components/ui/sheet";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
 import { 
   Activity, LogOut, Search, AlertTriangle, AlertCircle,
   Target, ChevronRight, Settings, Clock, Building2,
-  BarChart3, Menu, Plus, Users, Briefcase, Home, X
+  BarChart3, Menu, Plus, Users, Briefcase, Home, MoreVertical,
+  Edit2, Trash2, X
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
@@ -39,6 +41,10 @@ export default function PortfolioDashboard() {
   const [clientDialog, setClientDialog] = useState({ open: false, data: null });
   const [engagementDialog, setEngagementDialog] = useState({ open: false, data: null });
   const [userDialog, setUserDialog] = useState({ open: false, data: null });
+  
+  // Management sheet states
+  const [clientsSheet, setClientsSheet] = useState(false);
+  const [consultantsSheet, setConsultantsSheet] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -46,7 +52,6 @@ export default function PortfolioDashboard() {
 
   const fetchData = async () => {
     try {
-      // Fetch user if not available
       if (!user) {
         const userRes = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
         if (!userRes.ok) throw new Error('Not authenticated');
@@ -54,29 +59,17 @@ export default function PortfolioDashboard() {
         setUser(userData);
       }
 
-      // Fetch dashboard summary
       const summaryRes = await fetch(`${API_URL}/api/dashboard/summary`, { credentials: 'include' });
-      if (summaryRes.ok) {
-        setSummary(await summaryRes.json());
-      }
+      if (summaryRes.ok) setSummary(await summaryRes.json());
 
-      // Fetch all engagements
       const engRes = await fetch(`${API_URL}/api/engagements`, { credentials: 'include' });
-      if (engRes.ok) {
-        setEngagements(await engRes.json());
-      }
+      if (engRes.ok) setEngagements(await engRes.json());
 
-      // Fetch clients for dialogs
       const clientsRes = await fetch(`${API_URL}/api/clients`, { credentials: 'include' });
-      if (clientsRes.ok) {
-        setClients(await clientsRes.json());
-      }
+      if (clientsRes.ok) setClients(await clientsRes.json());
 
-      // Fetch users for dialogs
       const usersRes = await fetch(`${API_URL}/api/users`, { credentials: 'include' });
-      if (usersRes.ok) {
-        setUsers(await usersRes.json());
-      }
+      if (usersRes.ok) setUsers(await usersRes.json());
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Failed to load dashboard');
@@ -87,10 +80,7 @@ export default function PortfolioDashboard() {
 
   const handleLogout = async () => {
     try {
-      await fetch(`${API_URL}/api/auth/logout`, {
-        method: 'POST',
-        credentials: 'include'
-      });
+      await fetch(`${API_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
       toast.success('Logged out successfully');
       navigate('/');
     } catch (error) {
@@ -161,6 +151,21 @@ export default function PortfolioDashboard() {
     }
   };
 
+  const handleDeleteClient = async (clientId) => {
+    if (!window.confirm('Are you sure you want to delete this client? This will also affect related engagements.')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/clients/${clientId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error('Failed to delete client');
+      toast.success('Client deleted');
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
   const handleSaveEngagement = async (data) => {
     try {
       const url = data.engagement_id 
@@ -181,6 +186,21 @@ export default function PortfolioDashboard() {
       }
       toast.success(data.engagement_id ? 'Engagement updated' : 'Engagement created');
       setEngagementDialog({ open: false, data: null });
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleDeleteEngagement = async (engagementId) => {
+    if (!window.confirm('Are you sure you want to delete this engagement?')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/engagements/${engagementId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error('Failed to delete engagement');
+      toast.success('Engagement deleted');
       fetchData();
     } catch (error) {
       toast.error(error.message);
@@ -236,37 +256,47 @@ export default function PortfolioDashboard() {
             <span className="text-lg font-bold text-slate-900 font-heading">Engagement Pulse</span>
           </div>
         </div>
-        <nav className="p-4 space-y-2">
+        <nav className="p-4 space-y-1">
           <a href="/portfolio" className="sidebar-link active">
             <Home className="w-5 h-5" />
             Dashboard
           </a>
-          <button 
-            onClick={() => setClientDialog({ open: true, data: null })}
-            className="sidebar-link w-full text-left"
-          >
+          <div className="pt-4 pb-2">
+            <p className="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Manage</p>
+          </div>
+          <button onClick={() => setClientsSheet(true)} className="sidebar-link w-full text-left">
             <Building2 className="w-5 h-5" />
-            Add Client
+            Clients ({clients.length})
           </button>
-          <button 
-            onClick={() => setEngagementDialog({ open: true, data: null })}
-            className="sidebar-link w-full text-left"
-          >
-            <Briefcase className="w-5 h-5" />
-            Add Engagement
-          </button>
-          <button 
-            onClick={() => setUserDialog({ open: true, data: null })}
-            className="sidebar-link w-full text-left"
-          >
+          <button onClick={() => setConsultantsSheet(true)} className="sidebar-link w-full text-left">
             <Users className="w-5 h-5" />
-            Add Consultant
+            Consultants ({users.filter(u => u.role === 'CONSULTANT').length})
+          </button>
+          <div className="pt-4 pb-2">
+            <p className="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Quick Add</p>
+          </div>
+          <button onClick={() => setClientDialog({ open: true, data: null })} className="sidebar-link w-full text-left">
+            <Plus className="w-5 h-5" />
+            New Client
+          </button>
+          <button onClick={() => setEngagementDialog({ open: true, data: null })} className="sidebar-link w-full text-left">
+            <Plus className="w-5 h-5" />
+            New Engagement
+          </button>
+          <button onClick={() => setUserDialog({ open: true, data: null })} className="sidebar-link w-full text-left">
+            <Plus className="w-5 h-5" />
+            New Consultant
           </button>
           {user?.role === 'ADMIN' && (
-            <a href="/admin" className="sidebar-link">
-              <Settings className="w-5 h-5" />
-              Admin Setup
-            </a>
+            <>
+              <div className="pt-4 pb-2">
+                <p className="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Admin</p>
+              </div>
+              <a href="/admin" className="sidebar-link">
+                <Settings className="w-5 h-5" />
+                Admin Setup
+              </a>
+            </>
           )}
         </nav>
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100">
@@ -289,116 +319,103 @@ export default function PortfolioDashboard() {
         </div>
       </aside>
 
-      {/* Mobile Sidebar */}
-      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="left" className="w-64 p-0">
-          <div className="p-4 border-b border-slate-100">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-sky-500 rounded-xl flex items-center justify-center">
-                  <Activity className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-lg font-bold text-slate-900 font-heading">Pulse</span>
+      {/* Mobile Header */}
+      <div className="lg:hidden topbar">
+        <div className="px-4 py-3 flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(true)}>
+            <Menu className="w-5 h-5" />
+          </Button>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center">
+              <Activity className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-bold text-slate-900">Pulse</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {user?.picture ? (
+              <img src={user.picture} alt={user.name} className="w-8 h-8 rounded-full" />
+            ) : (
+              <div className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center">
+                <span className="text-sm font-medium text-sky-700">{user?.name?.charAt(0)}</span>
               </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Sidebar Sheet */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent side="left" className="w-72 p-0">
+          <div className="p-4 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-sky-500 rounded-xl flex items-center justify-center">
+                <Activity className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-lg font-bold text-slate-900 font-heading">Pulse</span>
             </div>
           </div>
-          <nav className="p-4 space-y-2">
+          <nav className="p-4 space-y-1">
             <a href="/portfolio" className="sidebar-link active" onClick={() => setSidebarOpen(false)}>
               <Home className="w-5 h-5" />
               Dashboard
             </a>
-            <button 
-              onClick={() => { setClientDialog({ open: true, data: null }); setSidebarOpen(false); }}
-              className="sidebar-link w-full text-left"
-            >
+            <div className="pt-4 pb-2">
+              <p className="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Manage</p>
+            </div>
+            <button onClick={() => { setClientsSheet(true); setSidebarOpen(false); }} className="sidebar-link w-full text-left">
               <Building2 className="w-5 h-5" />
-              Add Client
+              Clients
             </button>
-            <button 
-              onClick={() => { setEngagementDialog({ open: true, data: null }); setSidebarOpen(false); }}
-              className="sidebar-link w-full text-left"
-            >
-              <Briefcase className="w-5 h-5" />
-              Add Engagement
-            </button>
-            <button 
-              onClick={() => { setUserDialog({ open: true, data: null }); setSidebarOpen(false); }}
-              className="sidebar-link w-full text-left"
-            >
+            <button onClick={() => { setConsultantsSheet(true); setSidebarOpen(false); }} className="sidebar-link w-full text-left">
               <Users className="w-5 h-5" />
-              Add Consultant
+              Consultants
             </button>
-            {user?.role === 'ADMIN' && (
-              <a href="/admin" className="sidebar-link" onClick={() => setSidebarOpen(false)}>
-                <Settings className="w-5 h-5" />
-                Admin Setup
-              </a>
-            )}
+            <div className="pt-4 pb-2">
+              <p className="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Quick Add</p>
+            </div>
+            <button onClick={() => { setClientDialog({ open: true, data: null }); setSidebarOpen(false); }} className="sidebar-link w-full text-left">
+              <Plus className="w-5 h-5" />
+              New Client
+            </button>
+            <button onClick={() => { setEngagementDialog({ open: true, data: null }); setSidebarOpen(false); }} className="sidebar-link w-full text-left">
+              <Plus className="w-5 h-5" />
+              New Engagement
+            </button>
+            <button onClick={() => { setUserDialog({ open: true, data: null }); setSidebarOpen(false); }} className="sidebar-link w-full text-left">
+              <Plus className="w-5 h-5" />
+              New Consultant
+            </button>
           </nav>
         </SheetContent>
       </Sheet>
 
       {/* Main Content */}
       <div className="lg:ml-64">
-        {/* Mobile Topbar */}
-        <header className="topbar lg:hidden">
-          <div className="px-4 py-3 flex items-center justify-between">
-            <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(true)}>
-              <Menu className="w-5 h-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              {user?.picture ? (
-                <img src={user.picture} alt={user.name} className="w-8 h-8 rounded-full" />
-              ) : (
-                <div className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-medium text-sky-700">{user?.name?.charAt(0)}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </header>
-
         <main className="p-6 lg:p-8">
-          {/* Page Header with Quick Actions */}
+          {/* Page Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
             <div>
               <h1 className="text-3xl font-bold font-heading text-slate-900">Portfolio Dashboard</h1>
               <p className="text-slate-600 mt-1">Monitor engagement health across all clients</p>
             </div>
             <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setClientDialog({ open: true, data: null })}
-                data-testid="quick-add-client"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Client
+              <Button variant="outline" size="sm" onClick={() => setClientsSheet(true)}>
+                <Building2 className="w-4 h-4 mr-1" />
+                Clients
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setEngagementDialog({ open: true, data: null })}
-                data-testid="quick-add-engagement"
-              >
+              <Button variant="outline" size="sm" onClick={() => setConsultantsSheet(true)}>
+                <Users className="w-4 h-4 mr-1" />
+                Consultants
+              </Button>
+              <Button size="sm" onClick={() => setEngagementDialog({ open: true, data: null })} className="bg-sky-500 hover:bg-sky-600">
                 <Plus className="w-4 h-4 mr-1" />
                 Engagement
-              </Button>
-              <Button 
-                size="sm"
-                onClick={() => setUserDialog({ open: true, data: null })}
-                className="bg-sky-500 hover:bg-sky-600"
-                data-testid="quick-add-consultant"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Consultant
               </Button>
             </div>
           </div>
 
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {/* RAG Overview Card */}
             <Card className="glass-card col-span-1 md:col-span-2" data-testid="rag-overview-card">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-medium text-slate-700 flex items-center gap-2">
@@ -424,7 +441,6 @@ export default function PortfolioDashboard() {
               </CardContent>
             </Card>
 
-            {/* Missing Pulses */}
             <Card className="glass-card stat-card amber" data-testid="missing-pulses-card">
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
@@ -438,7 +454,6 @@ export default function PortfolioDashboard() {
               </CardContent>
             </Card>
 
-            {/* Total Engagements */}
             <Card className="glass-card stat-card blue" data-testid="total-engagements-card">
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
@@ -448,14 +463,13 @@ export default function PortfolioDashboard() {
                   </div>
                   <Building2 className="w-8 h-8 text-sky-400" />
                 </div>
-                <p className="text-xs text-slate-500 mt-2">Across all clients</p>
+                <p className="text-xs text-slate-500 mt-2">Across {clients.length} clients</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Critical Items Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* Critical Issues */}
             <Card className="glass-card" data-testid="critical-issues-card">
               <CardHeader className="border-b border-slate-50">
                 <CardTitle className="text-base font-medium text-slate-700 flex items-center gap-2">
@@ -468,22 +482,18 @@ export default function PortfolioDashboard() {
                   <div className="divide-y divide-slate-100">
                     {summary.critical_issues.slice(0, 5).map((issue) => (
                       <div key={issue.issue_id} className="p-4 hover:bg-slate-50 transition-colors cursor-pointer"
-                        onClick={() => navigate(`/engagement/${issue.engagement_id}`)}
-                      >
+                        onClick={() => navigate(`/engagement/${issue.engagement_id}`)}>
                         <p className="font-medium text-slate-900 text-sm">{issue.title}</p>
                         <p className="text-xs text-slate-500 mt-1">{issue.engagement?.engagement_name}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="p-6 text-center text-slate-500 text-sm">
-                    No critical issues
-                  </div>
+                  <div className="p-6 text-center text-slate-500 text-sm">No critical issues</div>
                 )}
               </CardContent>
             </Card>
 
-            {/* High Risks */}
             <Card className="glass-card" data-testid="high-risks-card">
               <CardHeader className="border-b border-slate-50">
                 <CardTitle className="text-base font-medium text-slate-700 flex items-center gap-2">
@@ -496,22 +506,18 @@ export default function PortfolioDashboard() {
                   <div className="divide-y divide-slate-100">
                     {summary.high_risks.slice(0, 5).map((risk) => (
                       <div key={risk.risk_id} className="p-4 hover:bg-slate-50 transition-colors cursor-pointer"
-                        onClick={() => navigate(`/engagement/${risk.engagement_id}`)}
-                      >
+                        onClick={() => navigate(`/engagement/${risk.engagement_id}`)}>
                         <p className="font-medium text-slate-900 text-sm">{risk.title}</p>
                         <p className="text-xs text-slate-500 mt-1">{risk.engagement?.engagement_name}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="p-6 text-center text-slate-500 text-sm">
-                    No high impact risks
-                  </div>
+                  <div className="p-6 text-center text-slate-500 text-sm">No high impact risks</div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Upcoming Milestones */}
             <Card className="glass-card" data-testid="upcoming-milestones-card">
               <CardHeader className="border-b border-slate-50">
                 <CardTitle className="text-base font-medium text-slate-700 flex items-center gap-2">
@@ -524,8 +530,7 @@ export default function PortfolioDashboard() {
                   <div className="divide-y divide-slate-100">
                     {summary.upcoming_milestones.slice(0, 5).map((ms) => (
                       <div key={ms.milestone_id} className="p-4 hover:bg-slate-50 transition-colors cursor-pointer"
-                        onClick={() => navigate(`/engagement/${ms.engagement_id}`)}
-                      >
+                        onClick={() => navigate(`/engagement/${ms.engagement_id}`)}>
                         <div className="flex items-center justify-between">
                           <p className="font-medium text-slate-900 text-sm">{ms.title}</p>
                           <span className="text-xs text-slate-500">{format(parseISO(ms.due_date), 'MMM d')}</span>
@@ -535,9 +540,7 @@ export default function PortfolioDashboard() {
                     ))}
                   </div>
                 ) : (
-                  <div className="p-6 text-center text-slate-500 text-sm">
-                    No upcoming milestones
-                  </div>
+                  <div className="p-6 text-center text-slate-500 text-sm">No upcoming milestones</div>
                 )}
               </CardContent>
             </Card>
@@ -582,14 +585,40 @@ export default function PortfolioDashboard() {
             {filteredEngagements.map((eng, index) => (
               <Card 
                 key={eng.engagement_id}
-                className="glass-card card-interactive animate-fadeInUp"
+                className="glass-card animate-fadeInUp relative group"
                 style={{ animationDelay: `${index * 50}ms` }}
-                onClick={() => navigate(`/engagement/${eng.engagement_id}`, { state: { user } })}
                 data-testid={`engagement-card-${eng.engagement_id}`}
               >
-                <CardContent className="p-5">
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-4">
+                {/* Actions Dropdown */}
+                <div className="absolute top-3 right-3 z-10">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => navigate(`/engagement/${eng.engagement_id}`, { state: { user } })}>
+                        <ChevronRight className="w-4 h-4 mr-2" />
+                        View Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEngagementDialog({ open: true, data: eng }); }}>
+                        <Edit2 className="w-4 h-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={(e) => { e.stopPropagation(); handleDeleteEngagement(eng.engagement_id); }}
+                        className="text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                <CardContent className="p-5 cursor-pointer" onClick={() => navigate(`/engagement/${eng.engagement_id}`, { state: { user } })}>
+                  <div className="flex items-start justify-between mb-4 pr-8">
                     <div>
                       <p className="text-sm text-slate-500">{eng.client?.client_name}</p>
                       <h3 className="font-semibold text-slate-900 font-heading mt-0.5">{eng.engagement_name}</h3>
@@ -598,7 +627,6 @@ export default function PortfolioDashboard() {
                     {getRagBadge(eng.rag_status)}
                   </div>
 
-                  {/* Consultant */}
                   <div className="flex items-center gap-2 mb-4">
                     {eng.consultant?.picture ? (
                       <img src={eng.consultant.picture} alt="" className="w-6 h-6 rounded-full" />
@@ -610,16 +638,13 @@ export default function PortfolioDashboard() {
                     <span className="text-sm text-slate-600">{eng.consultant?.name || 'Unassigned'}</span>
                   </div>
 
-                  {/* Metrics Row */}
                   <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-100">
-                    {/* Health Score */}
                     <div className="text-center">
                       <p className={`text-xl font-bold font-heading ${getHealthColor(eng.health_score)}`}>
                         {eng.health_score}
                       </p>
                       <p className="text-xs text-slate-500">Health</p>
                     </div>
-                    {/* Issues */}
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1">
                         {eng.issues_summary?.critical > 0 && (
@@ -634,14 +659,12 @@ export default function PortfolioDashboard() {
                       </div>
                       <p className="text-xs text-slate-500">Issues</p>
                     </div>
-                    {/* Risks */}
                     <div className="text-center">
                       <p className="text-sm font-medium text-slate-700">{eng.risks_count || 0}</p>
                       <p className="text-xs text-slate-500">Risks</p>
                     </div>
                   </div>
 
-                  {/* Last Pulse */}
                   <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
                     <span className="text-xs text-slate-500">
                       Last pulse: {eng.last_pulse_date ? format(parseISO(eng.last_pulse_date), 'MMM d') : 'Never'}
@@ -661,6 +684,90 @@ export default function PortfolioDashboard() {
           )}
         </main>
       </div>
+
+      {/* Clients Management Sheet */}
+      <Sheet open={clientsSheet} onOpenChange={setClientsSheet}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center justify-between">
+              <span>Manage Clients</span>
+              <Button size="sm" onClick={() => { setClientDialog({ open: true, data: null }); }}>
+                <Plus className="w-4 h-4 mr-1" />
+                Add Client
+              </Button>
+            </SheetTitle>
+          </SheetHeader>
+          <div className="mt-6 space-y-3">
+            {clients.map((client) => (
+              <div key={client.client_id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-slate-900">{client.client_name}</p>
+                  <p className="text-sm text-slate-500">{client.industry || 'No industry'}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => setClientDialog({ open: true, data: client })}>
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDeleteClient(client.client_id)}>
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {clients.length === 0 && (
+              <p className="text-center text-slate-500 py-8">No clients yet</p>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Consultants Management Sheet */}
+      <Sheet open={consultantsSheet} onOpenChange={setConsultantsSheet}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center justify-between">
+              <span>Manage Consultants</span>
+              <Button size="sm" onClick={() => { setUserDialog({ open: true, data: null }); }}>
+                <Plus className="w-4 h-4 mr-1" />
+                Add Consultant
+              </Button>
+            </SheetTitle>
+          </SheetHeader>
+          <div className="mt-6 space-y-3">
+            {users.filter(u => u.role === 'CONSULTANT').map((consultant) => {
+              const engagement = engagements.find(e => e.consultant_user_id === consultant.user_id);
+              return (
+                <div key={consultant.user_id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    {consultant.picture ? (
+                      <img src={consultant.picture} alt="" className="w-10 h-10 rounded-full" />
+                    ) : (
+                      <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-medium text-sky-700">{consultant.name?.charAt(0)}</span>
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium text-slate-900">{consultant.name}</p>
+                      <p className="text-sm text-slate-500">{consultant.email}</p>
+                      {engagement && (
+                        <p className="text-xs text-sky-600 mt-0.5">{engagement.client?.client_name} - {engagement.engagement_name}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => setUserDialog({ open: true, data: consultant })}>
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+            {users.filter(u => u.role === 'CONSULTANT').length === 0 && (
+              <p className="text-center text-slate-500 py-8">No consultants yet</p>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Dialogs */}
       <ClientDialog 
@@ -698,10 +805,18 @@ function ClientDialog({ open, data, onClose, onSave }) {
   });
 
   useEffect(() => {
-    if (data) {
-      setForm(data);
-    } else {
-      setForm({ client_name: '', industry: '', notes: '', primary_contact_name: '', primary_contact_email: '' });
+    if (open) {
+      if (data) {
+        setForm({
+          client_name: data.client_name || '',
+          industry: data.industry || '',
+          notes: data.notes || '',
+          primary_contact_name: data.primary_contact_name || '',
+          primary_contact_email: data.primary_contact_email || ''
+        });
+      } else {
+        setForm({ client_name: '', industry: '', notes: '', primary_contact_name: '', primary_contact_email: '' });
+      }
     }
   }, [data, open]);
 
@@ -714,54 +829,31 @@ function ClientDialog({ open, data, onClose, onSave }) {
         <div className="space-y-4">
           <div>
             <Label>Client Name *</Label>
-            <Input 
-              value={form.client_name} 
-              onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))} 
-              placeholder="Enter client name"
-            />
+            <Input value={form.client_name} onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))} placeholder="Enter client name" />
           </div>
           <div>
             <Label>Industry</Label>
-            <Input 
-              value={form.industry || ''} 
-              onChange={e => setForm(f => ({ ...f, industry: e.target.value }))} 
-              placeholder="e.g., Technology, Healthcare, Finance"
-            />
+            <Input value={form.industry} onChange={e => setForm(f => ({ ...f, industry: e.target.value }))} placeholder="e.g., Technology, Healthcare" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Primary Contact Name</Label>
-              <Input 
-                value={form.primary_contact_name || ''} 
-                onChange={e => setForm(f => ({ ...f, primary_contact_name: e.target.value }))} 
-              />
+              <Label>Primary Contact</Label>
+              <Input value={form.primary_contact_name} onChange={e => setForm(f => ({ ...f, primary_contact_name: e.target.value }))} />
             </div>
             <div>
-              <Label>Primary Contact Email</Label>
-              <Input 
-                type="email" 
-                value={form.primary_contact_email || ''} 
-                onChange={e => setForm(f => ({ ...f, primary_contact_email: e.target.value }))} 
-              />
+              <Label>Contact Email</Label>
+              <Input type="email" value={form.primary_contact_email} onChange={e => setForm(f => ({ ...f, primary_contact_email: e.target.value }))} />
             </div>
           </div>
           <div>
             <Label>Notes</Label>
-            <Textarea 
-              value={form.notes || ''} 
-              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} 
-              placeholder="Additional notes about this client"
-            />
+            <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Additional notes" />
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button 
-            onClick={() => onSave({ ...form, client_id: data?.client_id })} 
-            disabled={!form.client_name}
-            className="bg-sky-500 hover:bg-sky-600"
-          >
-            {data ? 'Update Client' : 'Create Client'}
+          <Button onClick={() => onSave({ ...form, client_id: data?.client_id })} disabled={!form.client_name} className="bg-sky-500 hover:bg-sky-600">
+            {data ? 'Update' : 'Create'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -783,34 +875,35 @@ function EngagementDialog({ open, data, clients, users, onClose, onSave }) {
   });
 
   useEffect(() => {
-    if (data) {
-      setForm({
-        client_id: data.client_id || '',
-        engagement_name: data.engagement_name || '',
-        engagement_code: data.engagement_code || '',
-        consultant_user_id: data.consultant_user_id || '',
-        start_date: data.start_date ? format(parseISO(data.start_date), 'yyyy-MM-dd') : '',
-        target_end_date: data.target_end_date ? format(parseISO(data.target_end_date), 'yyyy-MM-dd') : '',
-        rag_status: data.rag_status || 'GREEN',
-        overall_summary: data.overall_summary || ''
-      });
-    } else {
-      setForm({
-        client_id: '', engagement_name: '', engagement_code: '', consultant_user_id: '',
-        start_date: format(new Date(), 'yyyy-MM-dd'), target_end_date: '', rag_status: 'GREEN', overall_summary: ''
-      });
+    if (open) {
+      if (data) {
+        setForm({
+          client_id: data.client_id || '',
+          engagement_name: data.engagement_name || '',
+          engagement_code: data.engagement_code || '',
+          consultant_user_id: data.consultant_user_id || '',
+          start_date: data.start_date ? format(parseISO(data.start_date), 'yyyy-MM-dd') : '',
+          target_end_date: data.target_end_date ? format(parseISO(data.target_end_date), 'yyyy-MM-dd') : '',
+          rag_status: data.rag_status || 'GREEN',
+          overall_summary: data.overall_summary || ''
+        });
+      } else {
+        setForm({
+          client_id: '', engagement_name: '', engagement_code: '', consultant_user_id: '',
+          start_date: format(new Date(), 'yyyy-MM-dd'), target_end_date: '', rag_status: 'GREEN', overall_summary: ''
+        });
+      }
     }
   }, [data, open]);
 
   const handleSubmit = () => {
-    const payload = {
+    onSave({
       ...form,
       engagement_id: data?.engagement_id,
       start_date: form.start_date ? new Date(form.start_date).toISOString() : null,
       target_end_date: form.target_end_date ? new Date(form.target_end_date).toISOString() : null,
       consultant_user_id: form.consultant_user_id || null
-    };
-    onSave(payload);
+    });
   };
 
   return (
@@ -833,26 +926,18 @@ function EngagementDialog({ open, data, clients, users, onClose, onSave }) {
           </div>
           <div>
             <Label>Engagement Name *</Label>
-            <Input 
-              value={form.engagement_name} 
-              onChange={e => setForm(f => ({ ...f, engagement_name: e.target.value }))} 
-              placeholder="e.g., Digital Transformation Phase 1"
-            />
+            <Input value={form.engagement_name} onChange={e => setForm(f => ({ ...f, engagement_name: e.target.value }))} placeholder="e.g., Digital Transformation" />
           </div>
           <div>
             <Label>Engagement Code *</Label>
-            <Input 
-              value={form.engagement_code} 
-              onChange={e => setForm(f => ({ ...f, engagement_code: e.target.value }))} 
-              placeholder="e.g., TC-DT-2024"
-            />
+            <Input value={form.engagement_code} onChange={e => setForm(f => ({ ...f, engagement_code: e.target.value }))} placeholder="e.g., INF-DT-2024" />
           </div>
           <div>
-            <Label>Assigned Consultant</Label>
-            <Select value={form.consultant_user_id || 'unassigned'} onValueChange={v => setForm(f => ({ ...f, consultant_user_id: v === 'unassigned' ? '' : v }))}>
+            <Label>Consultant</Label>
+            <Select value={form.consultant_user_id || 'none'} onValueChange={v => setForm(f => ({ ...f, consultant_user_id: v === 'none' ? '' : v }))}>
               <SelectTrigger><SelectValue placeholder="Select consultant" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="unassigned">Unassigned</SelectItem>
+                <SelectItem value="none">Unassigned</SelectItem>
                 {users.map(u => (
                   <SelectItem key={u.user_id} value={u.user_id}>{u.name}</SelectItem>
                 ))}
@@ -865,7 +950,7 @@ function EngagementDialog({ open, data, clients, users, onClose, onSave }) {
               <Input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
             </div>
             <div>
-              <Label>Target End Date</Label>
+              <Label>End Date</Label>
               <Input type="date" value={form.target_end_date} onChange={e => setForm(f => ({ ...f, target_end_date: e.target.value }))} />
             </div>
           </div>
@@ -882,21 +967,13 @@ function EngagementDialog({ open, data, clients, users, onClose, onSave }) {
           </div>
           <div>
             <Label>Summary</Label>
-            <Textarea 
-              value={form.overall_summary || ''} 
-              onChange={e => setForm(f => ({ ...f, overall_summary: e.target.value }))} 
-              placeholder="Brief description of this engagement"
-            />
+            <Textarea value={form.overall_summary} onChange={e => setForm(f => ({ ...f, overall_summary: e.target.value }))} placeholder="Brief description" />
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button 
-            onClick={handleSubmit}
-            disabled={!form.client_id || !form.engagement_name || !form.engagement_code || !form.start_date}
-            className="bg-sky-500 hover:bg-sky-600"
-          >
-            {data ? 'Update Engagement' : 'Create Engagement'}
+          <Button onClick={handleSubmit} disabled={!form.client_id || !form.engagement_name || !form.engagement_code || !form.start_date} className="bg-sky-500 hover:bg-sky-600">
+            {data ? 'Update' : 'Create'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -904,7 +981,7 @@ function EngagementDialog({ open, data, clients, users, onClose, onSave }) {
   );
 }
 
-// User Dialog (for creating consultants)
+// User Dialog
 function UserDialog({ open, data, onClose, onSave }) {
   const [form, setForm] = useState({
     name: '',
@@ -914,15 +991,17 @@ function UserDialog({ open, data, onClose, onSave }) {
   });
 
   useEffect(() => {
-    if (data) {
-      setForm({
-        name: data.name || '',
-        email: data.email || '',
-        role: data.role || 'CONSULTANT',
-        is_active: data.is_active !== false
-      });
-    } else {
-      setForm({ name: '', email: '', role: 'CONSULTANT', is_active: true });
+    if (open) {
+      if (data) {
+        setForm({
+          name: data.name || '',
+          email: data.email || '',
+          role: data.role || 'CONSULTANT',
+          is_active: data.is_active !== false
+        });
+      } else {
+        setForm({ name: '', email: '', role: 'CONSULTANT', is_active: true });
+      }
     }
   }, [data, open]);
 
@@ -935,24 +1014,12 @@ function UserDialog({ open, data, onClose, onSave }) {
         <div className="space-y-4">
           <div>
             <Label>Name *</Label>
-            <Input 
-              value={form.name} 
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))} 
-              placeholder="Full name"
-            />
+            <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Full name" />
           </div>
           <div>
             <Label>Email *</Label>
-            <Input 
-              type="email" 
-              value={form.email} 
-              onChange={e => setForm(f => ({ ...f, email: e.target.value }))} 
-              placeholder="email@company.com"
-              disabled={!!data}
-            />
-            {!data && (
-              <p className="text-xs text-slate-500 mt-1">User will be able to login with this email via Google</p>
-            )}
+            <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="email@company.com" disabled={!!data} />
+            {!data && <p className="text-xs text-slate-500 mt-1">User can login with this email via Google</p>}
           </div>
           <div>
             <Label>Role</Label>
@@ -967,25 +1034,15 @@ function UserDialog({ open, data, onClose, onSave }) {
           </div>
           {data && (
             <div className="flex items-center gap-2">
-              <input 
-                type="checkbox" 
-                id="is_active" 
-                checked={form.is_active}
-                onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
-                className="rounded"
-              />
+              <input type="checkbox" id="is_active" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="rounded" />
               <Label htmlFor="is_active">Active</Label>
             </div>
           )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button 
-            onClick={() => onSave({ ...form, user_id: data?.user_id })}
-            disabled={!form.name || (!data && !form.email)}
-            className="bg-sky-500 hover:bg-sky-600"
-          >
-            {data ? 'Update User' : 'Create Consultant'}
+          <Button onClick={() => onSave({ ...form, user_id: data?.user_id })} disabled={!form.name || (!data && !form.email)} className="bg-sky-500 hover:bg-sky-600">
+            {data ? 'Update' : 'Create'}
           </Button>
         </DialogFooter>
       </DialogContent>
