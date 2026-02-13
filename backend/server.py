@@ -180,9 +180,12 @@ class EngagementCreate(BaseModel):
 class EngagementUpdate(BaseModel):
     engagement_name: Optional[str] = None
     consultant_user_id: Optional[str] = None
+    start_date: Optional[datetime] = None
     target_end_date: Optional[datetime] = None
     rag_status: Optional[RAGStatus] = None
     rag_reason: Optional[str] = None
+    is_active: Optional[bool] = None
+    completed_date: Optional[datetime] = None
     overall_summary: Optional[str] = None
     is_active: Optional[bool] = None
 
