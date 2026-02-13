@@ -2,7 +2,8 @@
 
 /* Ocean background gradient for main app */
 .app-background {
-  @apply bg-gradient-to-b from-sky-50 to-white min-h-screen;
+  background: linear-gradient(to bottom, #f0f9ff, #ffffff);
+  min-height: 100vh;
 }
 
 /* Login page background with ocean wave image */
@@ -15,7 +16,21 @@
 
 /* Bento grid layout */
 .bento-grid {
-  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6;
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .bento-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .bento-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 /* Dashboard card */
@@ -30,28 +45,36 @@
 
 .stat-card::before {
   content: '';
-  @apply absolute top-0 left-0 w-1 h-full;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
 }
 
 .stat-card.green::before {
-  @apply bg-emerald-500;
+  background-color: #10b981;
 }
 
 .stat-card.amber::before {
-  @apply bg-amber-500;
+  background-color: #f59e0b;
 }
 
 .stat-card.red::before {
-  @apply bg-red-500;
+  background-color: #ef4444;
 }
 
 .stat-card.blue::before {
-  @apply bg-sky-500;
+  background-color: #0ea5e9;
 }
 
 /* Tab styles */
 .tab-item {
-  @apply px-4 py-2 text-sm font-medium text-slate-600 border-b-2 border-transparent hover:text-sky-600 hover:border-sky-300 transition-colors duration-150;
+  @apply px-4 py-2 text-sm font-medium text-slate-600 border-b-2 border-transparent;
+}
+
+.tab-item:hover {
+  @apply text-sky-600 border-sky-300;
 }
 
 .tab-item.active {
@@ -92,7 +115,13 @@
 
 /* Main content area with sidebar */
 .main-with-sidebar {
-  @apply lg:ml-64;
+  margin-left: 0;
+}
+
+@media (min-width: 1024px) {
+  .main-with-sidebar {
+    margin-left: 16rem;
+  }
 }
 
 /* Form styles */
@@ -105,29 +134,50 @@
 }
 
 .form-input {
-  @apply w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-colors duration-150;
+  @apply w-full px-4 py-2.5 border border-slate-200 rounded-lg;
+}
+
+.form-input:focus {
+  @apply border-sky-500 ring-2 ring-sky-500/20;
 }
 
 .form-textarea {
-  @apply w-full px-4 py-3 border border-slate-200 rounded-lg focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-colors duration-150 resize-none;
+  @apply w-full px-4 py-3 border border-slate-200 rounded-lg resize-none;
+}
+
+.form-textarea:focus {
+  @apply border-sky-500 ring-2 ring-sky-500/20;
 }
 
 /* Button styles */
 .btn-primary {
-  @apply bg-sky-500 hover:bg-sky-600 text-white font-medium px-6 py-2.5 rounded-lg shadow-sm hover:shadow transition-all duration-150;
+  @apply bg-sky-500 text-white font-medium px-6 py-2.5 rounded-lg shadow-sm;
+}
+
+.btn-primary:hover {
+  @apply bg-sky-600 shadow;
 }
 
 .btn-secondary {
-  @apply bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 font-medium px-6 py-2.5 rounded-lg transition-all duration-150;
+  @apply bg-white border border-slate-200 text-slate-700 font-medium px-6 py-2.5 rounded-lg;
+}
+
+.btn-secondary:hover {
+  @apply bg-slate-50 text-slate-900;
 }
 
 .btn-ghost {
-  @apply hover:bg-sky-50 text-slate-600 hover:text-sky-700 font-medium px-4 py-2 rounded-lg transition-colors duration-150;
+  @apply text-slate-600 font-medium px-4 py-2 rounded-lg;
+}
+
+.btn-ghost:hover {
+  @apply bg-sky-50 text-sky-700;
 }
 
 /* Engagement card */
 .engagement-card {
-  @apply bg-white rounded-xl border border-slate-100 shadow-sm p-5 cursor-pointer transition-all duration-200;
+  @apply bg-white rounded-xl border border-slate-100 shadow-sm p-5 cursor-pointer;
+  transition: all 0.2s ease;
 }
 
 .engagement-card:hover {
@@ -145,7 +195,10 @@
 }
 
 .health-circle-text {
-  @apply absolute text-2xl font-bold font-heading;
+  position: absolute;
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: 'Manrope', sans-serif;
 }
 
 /* RAG trend indicator */
@@ -185,23 +238,36 @@
 
 /* Timeline */
 .timeline-item {
-  @apply relative pl-8 pb-6 border-l-2 border-slate-200 last:pb-0;
+  @apply relative pl-8 pb-6 border-l-2 border-slate-200;
+}
+
+.timeline-item:last-child {
+  @apply pb-0;
 }
 
 .timeline-dot {
-  @apply absolute -left-2 w-4 h-4 rounded-full bg-white border-2 border-slate-300;
+  position: absolute;
+  left: -0.5rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  background: white;
+  border: 2px solid #cbd5e1;
 }
 
 .timeline-dot.green {
-  @apply border-emerald-500 bg-emerald-50;
+  border-color: #10b981;
+  background: #ecfdf5;
 }
 
 .timeline-dot.amber {
-  @apply border-amber-500 bg-amber-50;
+  border-color: #f59e0b;
+  background: #fffbeb;
 }
 
 .timeline-dot.red {
-  @apply border-red-500 bg-red-50;
+  border-color: #ef4444;
+  background: #fef2f2;
 }
 
 /* Drawer/Sheet overlay */
@@ -232,7 +298,10 @@
 }
 
 .metric-value {
-  @apply text-3xl font-bold font-heading text-slate-900;
+  font-size: 1.875rem;
+  font-weight: 700;
+  font-family: 'Manrope', sans-serif;
+  color: #0f172a;
 }
 
 .metric-label {
@@ -241,17 +310,66 @@
 
 /* Quick action button */
 .quick-action {
-  @apply flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors duration-150;
+  @apply flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg;
+  transition: background-color 0.15s ease;
 }
 
 .quick-action.success {
-  @apply text-emerald-700 hover:bg-emerald-50;
+  @apply text-emerald-700;
+}
+
+.quick-action.success:hover {
+  @apply bg-emerald-50;
 }
 
 .quick-action.warning {
-  @apply text-amber-700 hover:bg-amber-50;
+  @apply text-amber-700;
+}
+
+.quick-action.warning:hover {
+  @apply bg-amber-50;
 }
 
 .quick-action.danger {
-  @apply text-red-700 hover:bg-red-50;
+  @apply text-red-700;
+}
+
+.quick-action.danger:hover {
+  @apply bg-red-50;
+}
+
+/* Glass card */
+.glass-card {
+  @apply bg-white rounded-xl border border-slate-100 shadow-sm;
+  transition: box-shadow 0.2s ease;
+}
+
+.glass-card:hover {
+  @apply shadow-md;
+}
+
+/* Card interactive */
+.card-interactive {
+  @apply cursor-pointer;
+  transition: all 0.2s ease;
+}
+
+.card-interactive:hover {
+  @apply shadow-md border-sky-200;
+}
+
+/* Animation utilities */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.3s ease-out forwards;
 }
