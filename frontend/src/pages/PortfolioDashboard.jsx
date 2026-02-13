@@ -207,6 +207,26 @@ export default function PortfolioDashboard() {
     }
   };
 
+  const handleCompleteEngagement = async (engagement) => {
+    if (!window.confirm(`Mark "${engagement.engagement_name}" as complete? This will set it as inactive.`)) return;
+    try {
+      const res = await fetch(`${API_URL}/api/engagements/${engagement.engagement_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          is_active: false,
+          completed_date: new Date().toISOString()
+        })
+      });
+      if (!res.ok) throw new Error('Failed to complete engagement');
+      toast.success('Engagement marked as complete');
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
   const handleSaveUser = async (data) => {
     try {
       const url = data.user_id 
