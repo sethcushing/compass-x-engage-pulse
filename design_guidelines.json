@@ -1,0 +1,177 @@
+{
+  "identity": {
+    "name": "E1 - The Anti-AI Designer",
+    "mission": "Create a clean, executive, ocean-themed internal portal that feels professional yet calm.",
+    "principles": [
+      "Fusion over Imitation: Mix SaaS efficiency with Ocean calmness.",
+      "Emotion First: Instill a sense of 'Calm Control' for busy consultants.",
+      "Content is King: Data density without clutter.",
+      "Negative Space: Use white space to separate high-density data grids.",
+      "Contrast: High legibility is non-negotiable for data dashboards."
+    ]
+  },
+  "theme": {
+    "mode": "light",
+    "style": "Ocean Executive",
+    "emotion": "Calm, Professional, Trustworthy"
+  },
+  "typography": {
+    "headings": {
+      "family": "Manrope, sans-serif",
+      "weights": ["600", "700"],
+      "tracking": "tight",
+      "usage": "Use for all page titles, card headers, and major KPI numbers."
+    },
+    "body": {
+      "family": "Inter, sans-serif",
+      "weights": ["400", "500"],
+      "leading": "relaxed",
+      "usage": "Use for all tabular data, long-form text, and form inputs."
+    },
+    "mono": {
+      "family": "JetBrains Mono, monospace",
+      "usage": "Use for IDs, technical codes, or specific data metrics."
+    }
+  },
+  "colors": {
+    "palette": {
+      "primary": {
+        "main": "#0EA5E9",
+        "hover": "#0284C7",
+        "foreground": "#FFFFFF",
+        "description": "Ocean Blue - Use for primary actions (Submit, Save), active tabs, and key highlights."
+      },
+      "secondary": {
+        "main": "#F0F9FF",
+        "foreground": "#0F172A",
+        "description": "Lightest Ocean Foam - Use for subtle backgrounds, secondary buttons."
+      },
+      "accent": {
+        "main": "#38BDF8",
+        "foreground": "#FFFFFF",
+        "description": "Sky Blue - Use for graphical accents, progress bars."
+      },
+      "background": {
+        "main": "#F8FAFC",
+        "card": "#FFFFFF",
+        "sidebar": "#FFFFFF"
+      },
+      "text": {
+        "primary": "#0F172A",
+        "secondary": "#64748B",
+        "muted": "#94A3B8"
+      },
+      "status": {
+        "green": "#10B981",
+        "amber": "#F59E0B",
+        "red": "#EF4444",
+        "neutral": "#94A3B8"
+      }
+    },
+    "tailwind_mapping": {
+      "primary": "sky-500",
+      "secondary": "sky-50",
+      "accent": "sky-400",
+      "background": "slate-50",
+      "text-primary": "slate-900",
+      "text-secondary": "slate-500"
+    }
+  },
+  "layout_strategies": {
+    "dashboard_grid": {
+      "type": "Bento Grid Mode B (High Density)",
+      "columns": "grid-cols-1 md:grid-cols-4",
+      "gap": "gap-6",
+      "padding": "p-6 md:p-8"
+    },
+    "detail_view": {
+      "type": "Two-Column Drill Down",
+      "structure": "Left: 25% (Meta/Nav), Right: 75% (Content Tabs)",
+      "mobile_structure": "Stack: Meta on top, Tabs below"
+    },
+    "containers": {
+      "card": "bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow duration-200",
+      "section": "mb-8"
+    }
+  },
+  "components": {
+    "buttons": {
+      "style": "Rounded-lg (not pill, not sharp)",
+      "primary": "bg-sky-500 hover:bg-sky-600 text-white shadow-sm hover:shadow",
+      "secondary": "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900",
+      "ghost": "hover:bg-sky-50 text-slate-600 hover:text-sky-700"
+    },
+    "inputs": {
+      "style": "bg-white border-slate-200 focus:border-sky-500 focus:ring-sky-500 rounded-md"
+    },
+    "cards": {
+      "style": "bg-white rounded-xl border border-slate-100 shadow-sm",
+      "header": "px-6 py-4 border-b border-slate-50 flex justify-between items-center"
+    },
+    "badges": {
+      "rag_green": "bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider",
+      "rag_amber": "bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider",
+      "rag_red": "bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider"
+    },
+    "navigation": {
+      "sidebar": "bg-white border-r border-slate-100 h-screen w-64 fixed left-0 top-0 hidden md:block",
+      "topbar": "bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50"
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism": "Use for Topbar and Toast notifications: bg-white/80 backdrop-blur-xl border-b border-slate-200/50",
+    "gradients": "Subtle top-to-bottom gradient on the main background: bg-gradient-to-b from-sky-50 to-white min-h-screen",
+    "shadows": "Use soft, diffuse shadows: shadow-[0_2px_8px_rgba(0,0,0,0.04)]",
+    "borders": "Use subtle borders instead of heavy shadows for separation: border border-slate-100"
+  },
+  "images": {
+    "login_background": {
+      "url": "https://images.unsplash.com/photo-1733830188985-c68c5f5a6631?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMG9jZWFuJTIwd2F2ZSUyMGJ1c2luZXNzJTIwYmFja2dyb3VuZCUyMGxpZ2h0JTIwYmx1ZXxlbnwwfHx8fDE3NzEwMDExMzZ8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Abstract Blue Waves",
+      "usage": "Full screen background for Login Page with overlay"
+    },
+    "avatars": [
+      {
+        "url": "https://images.unsplash.com/photo-1659353220597-71b8c6a56259?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBidXNpbmVzcyUyMHdvbWFuJTIwcG9ydHJhaXQlMjBjbGVhciUyMGJhY2tncm91bmR8ZW58MHx8fHwxNzcxMDAxMTM3fDA&ixlib=rb-4.1.0&q=85",
+        "alt": "Consultant Avatar"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1704627363842-a169b9743309?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwzfHxwcm9mZXNzaW9uYWwlMjBidXNpbmVzcyUyMHdvbWFuJTIwcG9ydHJhaXQlMjBjbGVhciUyMGJhY2tncm91bmR8ZW58MHx8fHwxNzcxMDAxMTM3fDA&ixlib=rb-4.1.0&q=85",
+        "alt": "Lead Avatar"
+      }
+    ],
+    "placeholders": {
+      "client_logo": "https://images.unsplash.com/photo-1636051028886-0059ad2383c8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MTJ8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBtaW5pbWFsJTIwdGVjaCUyMGNvbXBhbnklMjBsb2dvJTIwdmVjdG9yJTIwd2hpdGUlMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTc3MTAwMTEzOHww&ixlib=rb-4.1.0&q=85"
+    }
+  },
+  "instructions_to_main_agent": [
+    "1. THEME SETUP: Ensure Tailwind config includes the custom 'sky' and 'slate' extensions if not already present. Use the provided color codes.",
+    "2. FONT SETUP: Import Manrope and Inter from Google Fonts in index.css.",
+    "3. LAYOUT: Build the 'Portfolio Dashboard' using the Bento Grid B guidelines. It must be dense but readable.",
+    "4. DRILL-DOWN: The 'Engagement Detail' page must use a Tab-based interface (Overview, Pulses, Milestones, Risks, Issues, Contacts).",
+    "5. FORMS: The 'Weekly Pulse Form' should be a focused, single-column layout max-w-2xl centered, with clear sections.",
+    "6. HEALTH SCORE: Use a circular progress indicator or a colorful gauge for the 'Health Score' (0-100).",
+    "7. RAG STATUS: Always use the defined Badge styles for Red/Amber/Green statuses. Do not use plain text.",
+    "8. SHADCN: Heavily customize the default Shadcn Card to have 'rounded-xl' and 'shadow-sm' to match the 'Ocean Executive' look.",
+    "9. DATA-TESTID: Add data-testid to all buttons, inputs, tabs, and major cards.",
+    "10. LOGIN: Use the provided ocean wave image as a background with a white/glass card overlay for the login form."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms.",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯📚 for icons.",
+    "Every interaction needs micro-animations - hover states, transitions. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories = main agent will use placeholder text which is FORBIDDEN.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Components MUST use named exports (export const ComponentName = ...).",
+    "Pages MUST use default exports (export default function PageName() {...}).",
+    "Use sonner for toasts."
+  ]
+}
