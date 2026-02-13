@@ -1,0 +1,137 @@
+{
+  "timestamp": "2026-02-13T17:01:52.351715",
+  "base_url": "https://pulse-dashboard-14.preview.emergentagent.com/api",
+  "summary": {
+    "tests_run": 21,
+    "tests_passed": 20,
+    "success_rate": 95.2
+  },
+  "detailed_results": [
+    {
+      "test": "API Connectivity",
+      "passed": true,
+      "message": "API responding (status: 401)",
+      "response": null
+    },
+    {
+      "test": "Seed Demo Data",
+      "passed": true,
+      "message": "Data already seeded",
+      "response": null
+    },
+    {
+      "test": "Seed Data Endpoint",
+      "passed": true,
+      "message": "Status: 200",
+      "response": null
+    },
+    {
+      "test": "Auth Me (No Token)",
+      "passed": true,
+      "message": "Should return 401 without token",
+      "response": null
+    },
+    {
+      "test": "Get Clients (Auth Required)",
+      "passed": true,
+      "message": "Correctly requires authentication",
+      "response": null
+    },
+    {
+      "test": "Get Engagements (Auth Required)",
+      "passed": true,
+      "message": "Correctly requires authentication",
+      "response": null
+    },
+    {
+      "test": "Get Users (Auth Required)",
+      "passed": true,
+      "message": "Correctly requires authentication",
+      "response": null
+    },
+    {
+      "test": "Dashboard Summary (Auth Required)",
+      "passed": true,
+      "message": "Correctly requires authentication",
+      "response": null
+    },
+    {
+      "test": "Get Current User (Mock Token)",
+      "passed": true,
+      "message": "Correctly rejects invalid token",
+      "response": null
+    },
+    {
+      "test": "Get Clients (Mock Token)",
+      "passed": true,
+      "message": "Correctly rejects invalid token",
+      "response": null
+    },
+    {
+      "test": "Get Engagements (Mock Token)",
+      "passed": true,
+      "message": "Correctly rejects invalid token",
+      "response": null
+    },
+    {
+      "test": "Get Users (Mock Token)",
+      "passed": true,
+      "message": "Correctly rejects invalid token",
+      "response": null
+    },
+    {
+      "test": "Create Clients",
+      "passed": true,
+      "message": "Correctly requires authentication",
+      "response": null
+    },
+    {
+      "test": "Create Engagements",
+      "passed": true,
+      "message": "Correctly requires authentication",
+      "response": null
+    },
+    {
+      "test": "Create Pulses",
+      "passed": true,
+      "message": "Correctly requires authentication",
+      "response": null
+    },
+    {
+      "test": "Create Milestones",
+      "passed": true,
+      "message": "Correctly requires authentication",
+      "response": null
+    },
+    {
+      "test": "Create Risks",
+      "passed": true,
+      "message": "Correctly requires authentication",
+      "response": null
+    },
+    {
+      "test": "Create Issues",
+      "passed": true,
+      "message": "Correctly requires authentication",
+      "response": null
+    },
+    {
+      "test": "Create Contacts",
+      "passed": true,
+      "message": "Correctly requires authentication",
+      "response": null
+    },
+    {
+      "test": "Invalid Endpoint",
+      "passed": true,
+      "message": "Returns 404 for invalid endpoints",
+      "response": null
+    },
+    {
+      "test": "Invalid Method",
+      "passed": false,
+      "message": "Handles invalid methods appropriately",
+      "response": null
+    }
+  ]
+}
