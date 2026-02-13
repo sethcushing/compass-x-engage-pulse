@@ -127,7 +127,11 @@
 
 /* Engagement card */
 .engagement-card {
-  @apply bg-white rounded-xl border border-slate-100 shadow-sm p-5 card-interactive;
+  @apply bg-white rounded-xl border border-slate-100 shadow-sm p-5 cursor-pointer transition-all duration-200;
+}
+
+.engagement-card:hover {
+  @apply shadow-md border-sky-200;
 }
 
 /* Pulse form card */
