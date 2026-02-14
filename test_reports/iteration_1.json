@@ -34,7 +34,7 @@
   },
   "passed_tests": [
     "Landing page loads with 'Get Started' and 'Sign In' buttons",
-    "Backend API accessible at https://pulse-dashboard-14.preview.emergentagent.com/api/",
+    "Backend API accessible at https://engagement-track-1.preview.emergentagent.com/api/",
     "Demo data seeded successfully (clients, engagements, users, pulses)",
     "GET /api/clients returns seeded clients (with auth)",
     "GET /api/engagements returns seeded engagements (with auth)", 
