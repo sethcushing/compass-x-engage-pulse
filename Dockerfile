@@ -3,11 +3,14 @@ FROM node:18-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
-# Copy package files
-COPY frontend/package.json frontend/yarn.lock ./
+# Copy package.json first (yarn.lock is optional)
+COPY frontend/package.json ./
 
-# Install dependencies
-RUN yarn install --frozen-lockfile
+# Copy yarn.lock if it exists (using a wildcard pattern)
+COPY frontend/yarn.loc[k] ./
+
+# Install dependencies (generates yarn.lock if missing)
+RUN yarn install
 
 # Copy frontend source
 COPY frontend/ ./
