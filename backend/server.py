@@ -555,32 +555,36 @@ async def create_session(request: Request, response: Response):
             logging.error(f"Auth error: {e}")
             raise HTTPException(status_code=401, detail="Authentication failed")
     
-    # Check if user exists
+    # Check if user exists - RESTRICTED ACCESS: Only pre-registered users allowed
     email = auth_data.get("email")
     existing_user = await db.users.find_one({"email": email}, {"_id": 0})
     
-    if existing_user:
-        user_id = existing_user["user_id"]
-        # Update user info
-        await db.users.update_one(
-            {"user_id": user_id},
-            {"$set": {
-                "name": auth_data.get("name", existing_user.get("name")),
-                "picture": auth_data.get("picture"),
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }}
+    if not existing_user:
+        # User not in system - deny access
+        logging.warning(f"Access denied for unregistered user: {email}")
+        raise HTTPException(
+            status_code=403, 
+            detail="Access denied. You are not registered in the system. Please contact your administrator."
         )
-    else:
-        # Create new user
-        user_id = f"user_{uuid.uuid4().hex[:12]}"
-        new_user = User(
-            user_id=user_id,
-            name=auth_data.get("name", ""),
-            email=email,
-            picture=auth_data.get("picture"),
-            role=UserRole.CONSULTANT  # Default role
+    
+    # Check if user is active
+    if not existing_user.get("is_active", True):
+        logging.warning(f"Access denied for inactive user: {email}")
+        raise HTTPException(
+            status_code=403,
+            detail="Your account has been deactivated. Please contact your administrator."
         )
-        await db.users.insert_one(serialize_doc(new_user.model_dump()))
+    
+    user_id = existing_user["user_id"]
+    # Update user info (name, picture from Google)
+    await db.users.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "name": auth_data.get("name", existing_user.get("name")),
+            "picture": auth_data.get("picture"),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
     
     # Create session
     session_token = auth_data.get("session_token", f"session_{uuid.uuid4().hex}")
