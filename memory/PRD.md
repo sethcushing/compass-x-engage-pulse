@@ -154,6 +154,16 @@ Build an internal web app called "Engagement Pulse" for a consulting firm where:
 - Authentication: Emergent Google OAuth
 - Styling: Tailwind CSS + Shadcn UI components
 
+## Deployment
+- **Dockerfile**: Multi-stage build (Node.js for frontend build, Python for runtime)
+- **Platform**: Koyeb (or any Docker-compatible platform)
+- **Configuration**: See `DEPLOYMENT.md` for full instructions
+- **Files Added**: 
+  - `/app/Dockerfile` - Production Docker image
+  - `/app/.dockerignore` - Build optimization
+  - `/app/koyeb.yaml` - Koyeb deployment config
+  - `/app/DEPLOYMENT.md` - Deployment guide
+
 ## Test Results (December 2025)
 - Backend API: 100% pass rate (48/48 tests)
 - All endpoints correctly enforce authentication
