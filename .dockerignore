@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Build outputs (we rebuild in Docker)
+frontend/build/
+frontend/.cache/
+
+# Environment files (set via Koyeb)
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Test files
+test_reports/
+*.test.js
+*.spec.js
+tests/
+
+# Documentation
+*.md
+!README.md
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Memory/cache files
+memory/
+.emergent/
