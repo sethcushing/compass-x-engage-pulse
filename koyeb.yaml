@@ -1,0 +1,50 @@
+# Koyeb Deployment Configuration for Engagement Pulse
+# https://www.koyeb.com/docs/reference/koyeb-file-reference
+
+name: engagement-pulse
+
+service:
+  type: web
+  
+  # Build configuration
+  build:
+    dockerfile:
+      dockerfile: Dockerfile
+      target: ""
+    
+  # Runtime configuration
+  env:
+    - key: MONGO_URL
+      secret: mongo-url
+    - key: DB_NAME
+      value: engagement_pulse
+    - key: CORS_ORIGINS
+      value: "*"
+  
+  # Port configuration (Koyeb sets PORT env var automatically)
+  ports:
+    - port: 8000
+      protocol: http
+  
+  # Health check
+  health_checks:
+    - port: 8000
+      protocol: http
+      path: /api
+      interval_seconds: 30
+      timeout_seconds: 10
+      healthy_threshold: 1
+      unhealthy_threshold: 3
+  
+  # Scaling configuration
+  scaling:
+    min: 1
+    max: 3
+  
+  # Instance configuration
+  instance_types:
+    - type: nano
+  
+  # Regions
+  regions:
+    - fra
