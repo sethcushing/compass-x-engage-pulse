@@ -1579,3 +1579,26 @@ logger = logging.getLogger(__name__)
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+# ===================== STATIC FILES FOR PRODUCTION =====================
+# Serve React frontend in production (when build folder exists)
+FRONTEND_BUILD_DIR = Path(__file__).parent.parent / "frontend" / "build"
+
+if FRONTEND_BUILD_DIR.exists():
+    # Serve static files (JS, CSS, images, etc.)
+    app.mount("/static", StaticFiles(directory=FRONTEND_BUILD_DIR / "static"), name="static")
+    
+    # Catch-all route to serve React app for client-side routing
+    @app.get("/{full_path:path}")
+    async def serve_react_app(full_path: str):
+        # Don't serve index.html for API routes
+        if full_path.startswith("api"):
+            raise HTTPException(status_code=404, detail="Not found")
+        
+        # Try to serve the requested file
+        file_path = FRONTEND_BUILD_DIR / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+        
+        # Fall back to index.html for client-side routing
+        return FileResponse(FRONTEND_BUILD_DIR / "index.html")
