@@ -117,8 +117,7 @@ export default function EngagementDetail() {
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        headers: getAuthHeader(),
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify({ ...data, engagement_id: engagementId })
       });
 
@@ -155,8 +154,7 @@ export default function EngagementDetail() {
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        headers: getAuthHeader(),
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify({ ...data, engagement_id: engagementId })
       });
 
@@ -193,8 +191,7 @@ export default function EngagementDetail() {
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        headers: getAuthHeader(),
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify({ ...data, engagement_id: engagementId })
       });
 
@@ -231,8 +228,7 @@ export default function EngagementDetail() {
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        headers: getAuthHeader(),
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify({ ...data, engagement_id: engagementId })
       });
 
