@@ -208,7 +208,7 @@ export default function LandingPage() {
                     className="bg-sky-500 hover:bg-sky-600 text-white font-semibold px-8 py-6 text-lg"
                     data-testid="hero-login-btn"
                   >
-                    Get Started
+                    Log In
                     <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </div>
