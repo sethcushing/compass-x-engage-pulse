@@ -89,18 +89,9 @@ export default function ConsultantDashboard() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await fetch(`${API_URL}/api/auth/logout`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-      toast.success('Logged out successfully');
-      navigate('/');
-    } catch (error) {
-      console.error('Logout error:', error);
-      navigate('/');
-    }
+  const handleLogout = () => {
+    logout();
+    toast.success('Logged out successfully');
   };
 
   const getRagBadge = (status) => {
