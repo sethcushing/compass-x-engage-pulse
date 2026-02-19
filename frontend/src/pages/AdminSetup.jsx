@@ -602,6 +602,8 @@ function EngagementDialog({ open, data, clients, users, onClose, onSave }) {
 function UserDialog({ open, data, onClose, onSave }) {
   const [form, setForm] = useState({
     name: '',
+    email: '',
+    password: '',
     role: 'CONSULTANT',
     is_active: true
   });
@@ -610,11 +612,13 @@ function UserDialog({ open, data, onClose, onSave }) {
     if (data) {
       setForm({
         name: data.name,
+        email: data.email,
+        password: '',
         role: data.role,
         is_active: data.is_active
       });
     } else {
-      setForm({ name: '', role: 'CONSULTANT', is_active: true });
+      setForm({ name: '', email: '', password: '', role: 'CONSULTANT', is_active: true });
     }
   }, [data, open]);
 
@@ -625,24 +629,25 @@ function UserDialog({ open, data, onClose, onSave }) {
           <DialogTitle>{data ? 'Edit User' : 'Add User'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          <div>
+            <Label>Name *</Label>
+            <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+          </div>
           {!data && (
-            <>
-              <div>
-                <Label>Name *</Label>
-                <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-              </div>
-              <div>
-                <Label>Email *</Label>
-                <Input type="email" value={form.email || ''} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
-              </div>
-            </>
-          )}
-          {data && (
             <div>
-              <Label>Name</Label>
-              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+              <Label>Email *</Label>
+              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
             </div>
           )}
+          <div>
+            <Label>{data ? 'New Password (leave blank to keep current)' : 'Password *'}</Label>
+            <Input 
+              type="password" 
+              value={form.password} 
+              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+              placeholder={data ? 'Leave blank to keep current password' : 'Enter password'}
+            />
+          </div>
           <div>
             <Label>Role</Label>
             <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
@@ -668,7 +673,14 @@ function UserDialog({ open, data, onClose, onSave }) {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => onSave({ ...form, user_id: data?.user_id })}>Save</Button>
+          <Button onClick={() => {
+            const submitData = { ...form, user_id: data?.user_id };
+            // Don't send empty password for edits
+            if (data && !submitData.password) {
+              delete submitData.password;
+            }
+            onSave(submitData);
+          }}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
