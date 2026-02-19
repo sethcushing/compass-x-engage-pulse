@@ -212,8 +212,10 @@ export default function PortfolioDashboard() {
     try {
       const res = await fetch(`${API_URL}/api/engagements/${engagement.engagement_id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        headers: getAuthHeader(),
+        headers: { 
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        },
         body: JSON.stringify({
           is_active: false,
           completed_date: new Date().toISOString()
