@@ -173,8 +173,10 @@ export default function PortfolioDashboard() {
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        headers: getAuthHeader(),
+        headers: { 
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        },
         body: JSON.stringify(data)
       });
 
