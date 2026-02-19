@@ -54,22 +54,22 @@ export default function PortfolioDashboard() {
   const fetchData = async () => {
     try {
       if (!user) {
-        const userRes = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
+        const userRes = await fetch(`${API_URL}/api/auth/me`, { headers: getAuthHeader() });
         if (!userRes.ok) throw new Error('Not authenticated');
         const userData = await userRes.json();
         setUser(userData);
       }
 
-      const summaryRes = await fetch(`${API_URL}/api/dashboard/summary`, { credentials: 'include' });
+      const summaryRes = await fetch(`${API_URL}/api/dashboard/summary`, { headers: getAuthHeader() });
       if (summaryRes.ok) setSummary(await summaryRes.json());
 
-      const engRes = await fetch(`${API_URL}/api/engagements`, { credentials: 'include' });
+      const engRes = await fetch(`${API_URL}/api/engagements`, { headers: getAuthHeader() });
       if (engRes.ok) setEngagements(await engRes.json());
 
-      const clientsRes = await fetch(`${API_URL}/api/clients`, { credentials: 'include' });
+      const clientsRes = await fetch(`${API_URL}/api/clients`, { headers: getAuthHeader() });
       if (clientsRes.ok) setClients(await clientsRes.json());
 
-      const usersRes = await fetch(`${API_URL}/api/users`, { credentials: 'include' });
+      const usersRes = await fetch(`${API_URL}/api/users`, { headers: getAuthHeader() });
       if (usersRes.ok) setUsers(await usersRes.json());
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -81,7 +81,7 @@ export default function PortfolioDashboard() {
 
   const handleLogout = async () => {
     try {
-      await fetch(`${API_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+      await fetch(`${API_URL}/api/auth/logout`, { method: 'POST', headers: getAuthHeader() });
       toast.success('Logged out successfully');
       navigate('/');
     } catch (error) {
@@ -136,7 +136,7 @@ export default function PortfolioDashboard() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: getAuthHeader(),
         body: JSON.stringify(data)
       });
 
@@ -157,7 +157,7 @@ export default function PortfolioDashboard() {
     try {
       const res = await fetch(`${API_URL}/api/clients/${clientId}`, {
         method: 'DELETE',
-        credentials: 'include'
+        headers: getAuthHeader()
       });
       if (!res.ok) throw new Error('Failed to delete client');
       toast.success('Client deleted');
@@ -177,7 +177,7 @@ export default function PortfolioDashboard() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: getAuthHeader(),
         body: JSON.stringify(data)
       });
 
@@ -198,7 +198,7 @@ export default function PortfolioDashboard() {
     try {
       const res = await fetch(`${API_URL}/api/engagements/${engagementId}`, {
         method: 'DELETE',
-        credentials: 'include'
+        headers: getAuthHeader()
       });
       if (!res.ok) throw new Error('Failed to delete engagement');
       toast.success('Engagement deleted');
@@ -214,7 +214,7 @@ export default function PortfolioDashboard() {
       const res = await fetch(`${API_URL}/api/engagements/${engagement.engagement_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: getAuthHeader(),
         body: JSON.stringify({
           is_active: false,
           completed_date: new Date().toISOString()
@@ -238,7 +238,7 @@ export default function PortfolioDashboard() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: getAuthHeader(),
         body: JSON.stringify(data)
       });
 
