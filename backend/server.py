@@ -129,6 +129,7 @@ class User(BaseModel):
     user_id: str = Field(default_factory=lambda: f"user_{uuid.uuid4().hex[:12]}")
     name: str
     email: str
+    password_hash: Optional[str] = None
     picture: Optional[str] = None
     role: UserRole = UserRole.CONSULTANT
     is_active: bool = True
@@ -138,6 +139,7 @@ class User(BaseModel):
 class UserCreate(BaseModel):
     name: str
     email: str
+    password: str
     role: UserRole = UserRole.CONSULTANT
     picture: Optional[str] = None
 
@@ -145,6 +147,15 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
+    password: Optional[str] = None
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class ChangePasswordRequest(BaseModel):
+    current_password: Optional[str] = None
+    new_password: str
 
 class Client(BaseModel):
     model_config = ConfigDict(extra="ignore")
