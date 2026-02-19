@@ -12,6 +12,7 @@ import {
   Activity, ArrowLeft, Save, Send, CheckCircle, Clock, FileText
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { getAuthHeader, getCurrentUser } from "../App";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -19,7 +20,7 @@ export default function PulseForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const { engagementId, pulseId } = useParams();
-  const [user, setUser] = useState(location.state?.user || null);
+  const [user, setUser] = useState(location.state?.user || getCurrentUser());
   const [engagement, setEngagement] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
