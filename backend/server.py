@@ -577,85 +577,37 @@ async def log_activity(actor_user_id: str, entity_type: EntityType, entity_id: s
     await db.activity_logs.insert_one(serialize_doc(log.model_dump()))
 
 # ===================== AUTH ENDPOINTS =====================
-@api_router.post("/auth/session")
-async def create_session(request: Request, response: Response):
-    """Exchange session_id for session_token"""
-    body = await request.json()
-    session_id = body.get("session_id")
+@api_router.post("/auth/login")
+async def login(login_data: LoginRequest):
+    """Login with email and password"""
+    email = login_data.email.lower().strip()
     
-    if not session_id:
-        raise HTTPException(status_code=400, detail="session_id required")
+    # Find user by email
+    user = await db.users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}}, {"_id": 0})
     
-    # Call Emergent Auth API
-    async with httpx.AsyncClient() as client:
-        try:
-            auth_response = await client.get(
-                "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
-                headers={"X-Session-ID": session_id}
-            )
-            if auth_response.status_code != 200:
-                raise HTTPException(status_code=401, detail="Invalid session")
-            
-            auth_data = auth_response.json()
-        except Exception as e:
-            logging.error(f"Auth error: {e}")
-            raise HTTPException(status_code=401, detail="Authentication failed")
-    
-    # Check if user exists - RESTRICTED ACCESS: Only pre-registered users allowed
-    email = auth_data.get("email")
-    existing_user = await db.users.find_one({"email": email}, {"_id": 0})
-    
-    if not existing_user:
-        # User not in system - deny access
-        logging.warning(f"Access denied for unregistered user: {email}")
-        raise HTTPException(
-            status_code=403, 
-            detail="Access denied. You are not registered in the system. Please contact your administrator."
-        )
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
     
     # Check if user is active
-    if not existing_user.get("is_active", True):
-        logging.warning(f"Access denied for inactive user: {email}")
-        raise HTTPException(
-            status_code=403,
-            detail="Your account has been deactivated. Please contact your administrator."
-        )
+    if not user.get("is_active", True):
+        raise HTTPException(status_code=403, detail="Your account has been deactivated")
     
-    user_id = existing_user["user_id"]
-    # Update user info (name, picture from Google)
-    await db.users.update_one(
-        {"user_id": user_id},
-        {"$set": {
-            "name": auth_data.get("name", existing_user.get("name")),
-            "picture": auth_data.get("picture"),
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
-    )
+    # Verify password
+    if not user.get("password_hash"):
+        raise HTTPException(status_code=401, detail="Password not set. Contact administrator.")
     
-    # Create session
-    session_token = auth_data.get("session_token", f"session_{uuid.uuid4().hex}")
-    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    if not verify_password(login_data.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
     
-    await db.user_sessions.insert_one({
-        "user_id": user_id,
-        "session_token": session_token,
-        "expires_at": expires_at.isoformat(),
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
+    # Create JWT token
+    token = create_jwt_token(user["user_id"], user["email"], user["role"])
     
-    # Set cookie
-    response.set_cookie(
-        key="session_token",
-        value=session_token,
-        httponly=True,
-        secure=True,
-        samesite="none",
-        path="/",
-        max_age=7 * 24 * 60 * 60
-    )
-    
-    user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
-    return deserialize_doc(user)
+    # Return user without password_hash
+    user.pop("password_hash", None)
+    return {
+        "token": token,
+        "user": deserialize_doc(user)
+    }
 
 @api_router.get("/auth/me")
 async def get_me(request: Request):
@@ -665,15 +617,46 @@ async def get_me(request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user
 
-@api_router.post("/auth/logout")
-async def logout(request: Request, response: Response):
-    """Logout user"""
-    session_token = request.cookies.get("session_token")
-    if session_token:
-        await db.user_sessions.delete_one({"session_token": session_token})
+@api_router.post("/auth/change-password")
+async def change_password(request: Request, password_data: ChangePasswordRequest):
+    """Change user password"""
+    user = await require_auth(request)
     
-    response.delete_cookie(key="session_token", path="/")
-    return {"message": "Logged out"}
+    # Get full user with password_hash
+    full_user = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    
+    # If user has existing password, verify current password (unless admin is resetting)
+    if full_user.get("password_hash") and password_data.current_password:
+        if not verify_password(password_data.current_password, full_user["password_hash"]):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    # Hash new password and update
+    new_hash = hash_password(password_data.new_password)
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"password_hash": new_hash, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Password changed successfully"}
+
+@api_router.post("/auth/reset-password/{user_id}")
+async def reset_password(user_id: str, password_data: ChangePasswordRequest, request: Request):
+    """Admin reset user password"""
+    admin = await require_role(request, [UserRole.ADMIN])
+    
+    # Check if target user exists
+    target_user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Hash new password and update
+    new_hash = hash_password(password_data.new_password)
+    await db.users.update_one(
+        {"user_id": user_id},
+        {"$set": {"password_hash": new_hash, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": f"Password reset for {target_user['email']}"}
 
 # ===================== USER ENDPOINTS =====================
 @api_router.get("/users", response_model=List[User])
