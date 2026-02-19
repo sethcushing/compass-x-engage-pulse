@@ -72,16 +72,9 @@ export default function AdminSetup() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await fetch(`${API_URL}/api/auth/logout`, {
-        method: 'POST',
-        headers: getAuthHeader()
-      });
-      navigate('/');
-    } catch (error) {
-      navigate('/');
-    }
+  const handleLogout = () => {
+    logout();
+    toast.success('Logged out successfully');
   };
 
   const seedDemoData = async () => {
