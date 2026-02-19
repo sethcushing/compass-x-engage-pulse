@@ -45,7 +45,7 @@ export default function PulseForm() {
     try {
       // Fetch user if not available
       if (!user) {
-        const userRes = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
+        const userRes = await fetch(`${API_URL}/api/auth/me`, { headers: getAuthHeader() });
         if (!userRes.ok) throw new Error('Not authenticated');
         const userData = await userRes.json();
         setUser(userData);
@@ -59,13 +59,13 @@ export default function PulseForm() {
       }
 
       // Fetch engagement
-      const engRes = await fetch(`${API_URL}/api/engagements/${engagementId}`, { credentials: 'include' });
+      const engRes = await fetch(`${API_URL}/api/engagements/${engagementId}`, { headers: getAuthHeader() });
       if (!engRes.ok) throw new Error('Engagement not found');
       setEngagement(await engRes.json());
 
       // Fetch pulse if editing
       if (pulseId) {
-        const pulseRes = await fetch(`${API_URL}/api/pulses/${pulseId}`, { credentials: 'include' });
+        const pulseRes = await fetch(`${API_URL}/api/pulses/${pulseId}`, { headers: getAuthHeader() });
         if (pulseRes.ok) {
           const pulse = await pulseRes.json();
           setForm({
@@ -87,7 +87,7 @@ export default function PulseForm() {
         }
       } else {
         // Check if current week pulse exists
-        const currentRes = await fetch(`${API_URL}/api/pulses/current-week/${engagementId}`, { credentials: 'include' });
+        const currentRes = await fetch(`${API_URL}/api/pulses/current-week/${engagementId}`, { headers: getAuthHeader() });
         if (currentRes.ok) {
           const existingPulse = await currentRes.json();
           if (existingPulse) {
@@ -133,7 +133,7 @@ export default function PulseForm() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: getAuthHeader(),
         body: JSON.stringify(payload)
       });
 
