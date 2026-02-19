@@ -678,25 +678,43 @@ async def get_user(user_id: str, request: Request):
         raise HTTPException(status_code=404, detail="User not found")
     return deserialize_doc(user)
 
-@api_router.post("/users", response_model=User)
+@api_router.post("/users")
 async def create_user(user_data: UserCreate, request: Request):
     """Create a new user (Admin only)"""
     await require_role(request, [UserRole.ADMIN])
     
-    existing = await db.users.find_one({"email": user_data.email}, {"_id": 0})
+    existing = await db.users.find_one({"email": {"$regex": f"^{user_data.email}$", "$options": "i"}}, {"_id": 0})
     if existing:
         raise HTTPException(status_code=400, detail="User with this email already exists")
     
-    user = User(**user_data.model_dump())
+    # Create user with hashed password
+    user_dict = user_data.model_dump()
+    password = user_dict.pop("password")
+    user = User(**user_dict, password_hash=hash_password(password))
+    
     await db.users.insert_one(serialize_doc(user.model_dump()))
-    return user
+    
+    # Return user without password_hash
+    result = user.model_dump()
+    result.pop("password_hash", None)
+    return result
 
 @api_router.put("/users/{user_id}")
 async def update_user(user_id: str, user_data: UserUpdate, request: Request):
     """Update a user (Admin only)"""
     await require_role(request, [UserRole.ADMIN])
     
-    update_data = {k: v for k, v in user_data.model_dump().items() if v is not None}
+    update_dict = user_data.model_dump()
+    
+    # Handle password update separately
+    password = update_dict.pop("password", None)
+    
+    update_data = {k: v for k, v in update_dict.items() if v is not None}
+    
+    # If password provided, hash it
+    if password:
+        update_data["password_hash"] = hash_password(password)
+    
     if not update_data:
         raise HTTPException(status_code=400, detail="No data to update")
     
@@ -707,6 +725,7 @@ async def update_user(user_id: str, user_data: UserUpdate, request: Request):
         raise HTTPException(status_code=404, detail="User not found")
     
     user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    user.pop("password_hash", None)
     return deserialize_doc(user)
 
 # ===================== CLIENT ENDPOINTS =====================
