@@ -580,34 +580,59 @@ async def log_activity(actor_user_id: str, entity_type: EntityType, entity_id: s
 @api_router.post("/auth/login")
 async def login(login_data: LoginRequest):
     """Login with email and password"""
-    email = login_data.email.lower().strip()
-    
-    # Find user by email
-    user = await db.users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}}, {"_id": 0})
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-    
-    # Check if user is active
-    if not user.get("is_active", True):
-        raise HTTPException(status_code=403, detail="Your account has been deactivated")
-    
-    # Verify password
-    if not user.get("password_hash"):
-        raise HTTPException(status_code=401, detail="Password not set. Contact administrator.")
-    
-    if not verify_password(login_data.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-    
-    # Create JWT token
-    token = create_jwt_token(user["user_id"], user["email"], user["role"])
-    
-    # Return user without password_hash
-    user.pop("password_hash", None)
-    return {
-        "token": token,
-        "user": deserialize_doc(user)
-    }
+    try:
+        email = login_data.email.lower().strip()
+        
+        # Find user by email
+        user = await db.users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}}, {"_id": 0})
+        
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+        # Check if user is active
+        if not user.get("is_active", True):
+            raise HTTPException(status_code=403, detail="Your account has been deactivated")
+        
+        # Verify password
+        if not user.get("password_hash"):
+            raise HTTPException(status_code=401, detail="Password not set. Contact administrator.")
+        
+        if not verify_password(login_data.password, user["password_hash"]):
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+        # Create JWT token
+        token = create_jwt_token(user["user_id"], user["email"], user["role"])
+        
+        # Return user without password_hash
+        user.pop("password_hash", None)
+        return {
+            "token": token,
+            "user": deserialize_doc(user)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        raise HTTPException(status_code=500, detail=f"Database connection error. Please try again.")
+
+@api_router.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    try:
+        # Try to ping the database
+        await db.command("ping")
+        user_count = await db.users.count_documents({})
+        return {
+            "status": "healthy",
+            "database": "connected",
+            "users_seeded": user_count
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "database": "disconnected",
+            "error": str(e)
+        }
 
 @api_router.get("/auth/me")
 async def get_me(request: Request):
