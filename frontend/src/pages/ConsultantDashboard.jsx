@@ -11,13 +11,14 @@ import {
   TrendingUp, Bell
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { getAuthHeader, getCurrentUser, logout } from "../App";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 export default function ConsultantDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [user, setUser] = useState(location.state?.user || null);
+  const [user, setUser] = useState(location.state?.user || getCurrentUser());
   const [engagement, setEngagement] = useState(null);
   const [currentPulse, setCurrentPulse] = useState(null);
   const [pulseHistory, setPulseHistory] = useState([]);
@@ -34,14 +35,14 @@ export default function ConsultantDashboard() {
     try {
       // Fetch user if not available
       if (!user) {
-        const userRes = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
+        const userRes = await fetch(`${API_URL}/api/auth/me`, { headers: getAuthHeader() });
         if (!userRes.ok) throw new Error('Not authenticated');
         const userData = await userRes.json();
         setUser(userData);
       }
 
       // Fetch engagement
-      const engRes = await fetch(`${API_URL}/api/engagements`, { credentials: 'include' });
+      const engRes = await fetch(`${API_URL}/api/engagements`, { headers: getAuthHeader() });
       if (engRes.ok) {
         const engagements = await engRes.json();
         if (engagements.length > 0) {
