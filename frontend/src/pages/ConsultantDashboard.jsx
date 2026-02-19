@@ -50,32 +50,32 @@ export default function ConsultantDashboard() {
           setEngagement(eng);
 
           // Fetch current week pulse
-          const pulseRes = await fetch(`${API_URL}/api/pulses/current-week/${eng.engagement_id}`, { credentials: 'include' });
+          const pulseRes = await fetch(`${API_URL}/api/pulses/current-week/${eng.engagement_id}`, { headers: getAuthHeader() });
           if (pulseRes.ok) {
             const pulse = await pulseRes.json();
             setCurrentPulse(pulse);
           }
 
           // Fetch pulse history
-          const historyRes = await fetch(`${API_URL}/api/pulses?engagement_id=${eng.engagement_id}`, { credentials: 'include' });
+          const historyRes = await fetch(`${API_URL}/api/pulses?engagement_id=${eng.engagement_id}`, { headers: getAuthHeader() });
           if (historyRes.ok) {
             setPulseHistory(await historyRes.json());
           }
 
           // Fetch milestones
-          const msRes = await fetch(`${API_URL}/api/milestones?engagement_id=${eng.engagement_id}`, { credentials: 'include' });
+          const msRes = await fetch(`${API_URL}/api/milestones?engagement_id=${eng.engagement_id}`, { headers: getAuthHeader() });
           if (msRes.ok) {
             setMilestones(await msRes.json());
           }
 
           // Fetch risks
-          const riskRes = await fetch(`${API_URL}/api/risks?engagement_id=${eng.engagement_id}`, { credentials: 'include' });
+          const riskRes = await fetch(`${API_URL}/api/risks?engagement_id=${eng.engagement_id}`, { headers: getAuthHeader() });
           if (riskRes.ok) {
             setRisks(await riskRes.json());
           }
 
           // Fetch issues
-          const issueRes = await fetch(`${API_URL}/api/issues?engagement_id=${eng.engagement_id}`, { credentials: 'include' });
+          const issueRes = await fetch(`${API_URL}/api/issues?engagement_id=${eng.engagement_id}`, { headers: getAuthHeader() });
           if (issueRes.ok) {
             setIssues(await issueRes.json());
           }
