@@ -18,13 +18,14 @@ import {
   Edit2, Trash2, X, CheckCircle
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { getAuthHeader, getCurrentUser, logout } from "../App";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 export default function PortfolioDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [user, setUser] = useState(location.state?.user || null);
+  const [user, setUser] = useState(location.state?.user || getCurrentUser());
   const [summary, setSummary] = useState(null);
   const [engagements, setEngagements] = useState([]);
   const [clients, setClients] = useState([]);
