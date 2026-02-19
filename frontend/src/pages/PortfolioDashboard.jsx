@@ -79,14 +79,9 @@ export default function PortfolioDashboard() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await fetch(`${API_URL}/api/auth/logout`, { method: 'POST', headers: getAuthHeader() });
-      toast.success('Logged out successfully');
-      navigate('/');
-    } catch (error) {
-      navigate('/');
-    }
+  const handleLogout = () => {
+    logout();
+    toast.success('Logged out successfully');
   };
 
   const getRagBadge = (status) => {
