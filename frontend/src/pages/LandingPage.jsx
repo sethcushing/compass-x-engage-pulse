@@ -198,7 +198,7 @@ export default function LandingPage() {
                   <Button 
                     onClick={() => setShowLoginForm(true)}
                     size="lg"
-                    className="bg-sky-500 hover:bg-sky-600 text-white font-semibold px-8 py-6 text-lg"
+                    className="bg-white hover:bg-slate-100 text-sky-600 font-semibold px-8 py-6 text-lg"
                     data-testid="hero-login-btn"
                   >
                     Log In
