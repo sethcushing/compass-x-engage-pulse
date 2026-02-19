@@ -12,16 +12,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "../components/ui/label";
 import { 
   Activity, ArrowLeft, Plus, Edit2, Trash2, Building2, Users, Briefcase,
-  LogOut, Database
+  LogOut, Database, Key
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { getAuthHeader, getCurrentUser, logout } from "../App";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 export default function AdminSetup() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [user, setUser] = useState(location.state?.user || null);
+  const [user, setUser] = useState(location.state?.user || getCurrentUser());
   const [activeTab, setActiveTab] = useState("clients");
   const [clients, setClients] = useState([]);
   const [engagements, setEngagements] = useState([]);
