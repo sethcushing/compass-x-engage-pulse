@@ -113,13 +113,6 @@ export default function LandingPage() {
               </div>
               <span className="text-xl font-bold text-white font-heading">Engagement Pulse</span>
             </div>
-            <Button 
-              onClick={() => setShowLoginForm(true)}
-              className="bg-white text-sky-600 hover:bg-sky-50 font-semibold px-6"
-              data-testid="header-login-btn"
-            >
-              Sign In
-            </Button>
           </div>
         </header>
 
