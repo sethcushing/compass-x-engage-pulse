@@ -49,25 +49,25 @@ export default function EngagementDetail() {
     try {
       // Fetch user if not available
       if (!user) {
-        const userRes = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
+        const userRes = await fetch(`${API_URL}/api/auth/me`, { headers: getAuthHeader() });
         if (!userRes.ok) throw new Error('Not authenticated');
         const userData = await userRes.json();
         setUser(userData);
       }
 
       // Fetch engagement
-      const engRes = await fetch(`${API_URL}/api/engagements/${engagementId}`, { credentials: 'include' });
+      const engRes = await fetch(`${API_URL}/api/engagements/${engagementId}`, { headers: getAuthHeader() });
       if (!engRes.ok) throw new Error('Engagement not found');
       setEngagement(await engRes.json());
 
       // Fetch related data
       const [pulsesRes, msRes, risksRes, issuesRes, contactsRes, trendRes] = await Promise.all([
-        fetch(`${API_URL}/api/pulses?engagement_id=${engagementId}`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/milestones?engagement_id=${engagementId}`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/risks?engagement_id=${engagementId}`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/issues?engagement_id=${engagementId}`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/contacts?engagement_id=${engagementId}`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/dashboard/rag-trend/${engagementId}`, { credentials: 'include' })
+        fetch(`${API_URL}/api/pulses?engagement_id=${engagementId}`, { headers: getAuthHeader() }),
+        fetch(`${API_URL}/api/milestones?engagement_id=${engagementId}`, { headers: getAuthHeader() }),
+        fetch(`${API_URL}/api/risks?engagement_id=${engagementId}`, { headers: getAuthHeader() }),
+        fetch(`${API_URL}/api/issues?engagement_id=${engagementId}`, { headers: getAuthHeader() }),
+        fetch(`${API_URL}/api/contacts?engagement_id=${engagementId}`, { headers: getAuthHeader() }),
+        fetch(`${API_URL}/api/dashboard/rag-trend/${engagementId}`, { headers: getAuthHeader() })
       ]);
 
       if (pulsesRes.ok) setPulses(await pulsesRes.json());
@@ -118,7 +118,7 @@ export default function EngagementDetail() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: getAuthHeader(),
         body: JSON.stringify({ ...data, engagement_id: engagementId })
       });
 
@@ -136,7 +136,7 @@ export default function EngagementDetail() {
     try {
       const res = await fetch(`${API_URL}/api/milestones/${id}`, {
         method: 'DELETE',
-        credentials: 'include'
+        headers: getAuthHeader()
       });
       if (!res.ok) throw new Error('Failed to delete');
       toast.success('Milestone deleted');
@@ -156,7 +156,7 @@ export default function EngagementDetail() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: getAuthHeader(),
         body: JSON.stringify({ ...data, engagement_id: engagementId })
       });
 
@@ -174,7 +174,7 @@ export default function EngagementDetail() {
     try {
       const res = await fetch(`${API_URL}/api/risks/${id}`, {
         method: 'DELETE',
-        credentials: 'include'
+        headers: getAuthHeader()
       });
       if (!res.ok) throw new Error('Failed to delete');
       toast.success('Risk deleted');
@@ -194,7 +194,7 @@ export default function EngagementDetail() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: getAuthHeader(),
         body: JSON.stringify({ ...data, engagement_id: engagementId })
       });
 
@@ -212,7 +212,7 @@ export default function EngagementDetail() {
     try {
       const res = await fetch(`${API_URL}/api/issues/${id}`, {
         method: 'DELETE',
-        credentials: 'include'
+        headers: getAuthHeader()
       });
       if (!res.ok) throw new Error('Failed to delete');
       toast.success('Issue deleted');
@@ -232,7 +232,7 @@ export default function EngagementDetail() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: getAuthHeader(),
         body: JSON.stringify({ ...data, engagement_id: engagementId })
       });
 
@@ -250,7 +250,7 @@ export default function EngagementDetail() {
     try {
       const res = await fetch(`${API_URL}/api/contacts/${id}`, {
         method: 'DELETE',
-        credentials: 'include'
+        headers: getAuthHeader()
       });
       if (!res.ok) throw new Error('Failed to delete');
       toast.success('Contact deleted');
