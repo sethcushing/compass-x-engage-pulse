@@ -1,6 +1,7 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -12,7 +13,20 @@ from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
 from enum import Enum
-import httpx
+import hashlib
+import secrets
+import jwt
+
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
+
+# JWT Configuration
+JWT_SECRET = os.environ.get('JWT_SECRET', 'engagement-pulse-secret-key-2026')
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
+
+# Security
+security = HTTPBearer(auto_error=False)
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
