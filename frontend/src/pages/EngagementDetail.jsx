@@ -16,6 +16,7 @@ import {
   CheckCircle, XCircle, TrendingUp
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { getAuthHeader, getCurrentUser } from "../App";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -23,7 +24,7 @@ export default function EngagementDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const { engagementId } = useParams();
-  const [user, setUser] = useState(location.state?.user || null);
+  const [user, setUser] = useState(location.state?.user || getCurrentUser());
   const [engagement, setEngagement] = useState(null);
   const [pulses, setPulses] = useState([]);
   const [milestones, setMilestones] = useState([]);
