@@ -1584,6 +1584,54 @@ logger = logging.getLogger(__name__)
 async def shutdown_db_client():
     client.close()
 
+# ===================== AUTO-SEED ON STARTUP =====================
+@app.on_event("startup")
+async def seed_users_on_startup():
+    """Auto-seed CompassX users on startup if not already seeded"""
+    try:
+        existing_users = await db.users.count_documents({})
+        if existing_users > 0:
+            logger.info(f"Users already seeded ({existing_users} users found)")
+            return
+        
+        logger.info("Seeding CompassX users...")
+        
+        # CompassX Users - seth.cushing as ADMIN
+        compassx_users = [
+            User(name="Seth Cushing", email="seth.cushing@compassx.com", role=UserRole.ADMIN),
+            User(name="Ashley Clark", email="ashley.clark@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Brian Clements", email="brian.clements@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Brian Snowden", email="brian.snowden@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Bryan Posso", email="bryan.posso@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Chris McConnell", email="chris.mcconnell@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Christopher Grant", email="christopher.grant@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Daniel Eimen", email="daniel.eimen@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Deepak Sivaraman", email="deepak.sivaraman@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Fifi Thrift", email="fifi.thrift@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Keilan Malone", email="keilan.malone@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Kyle Kim", email="kyle.kim@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Matt Kalina", email="matt.kalina@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Padmanabhan Satyamoorthy", email="paddy.satyamoorthy@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Raquel Edwards", email="raquel.edwards@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Rey Khachatourian", email="rey.khachatourian@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Ricardo Gonzales", email="ricardo.gonzales@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Saif Quaderi", email="saif.quaderi@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Sandeep Komuravelli", email="sandeep.komuravelli@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Shane Hogan", email="shane.hogan@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Sim Singh", email="sim.singh@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Steve Marcott", email="steve.marcott@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Trinh Do", email="trinh.do@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Victoria Pearson", email="victoria.pearson@compassx.com", role=UserRole.CONSULTANT),
+        ]
+        
+        for user in compassx_users:
+            await db.users.insert_one(serialize_doc(user.model_dump()))
+        
+        logger.info(f"Successfully seeded {len(compassx_users)} CompassX users")
+        
+    except Exception as e:
+        logger.error(f"Error seeding users on startup: {e}")
+
 # ===================== STATIC FILES FOR PRODUCTION =====================
 # Serve React frontend in production (when build folder exists)
 FRONTEND_BUILD_DIR = Path(__file__).parent.parent / "frontend" / "build"
