@@ -42,7 +42,7 @@ export default function AdminSetup() {
     try {
       // Fetch user if not available
       if (!user) {
-        const userRes = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
+        const userRes = await fetch(`${API_URL}/api/auth/me`, { headers: getAuthHeader() });
         if (!userRes.ok) throw new Error('Not authenticated');
         const userData = await userRes.json();
         setUser(userData);
@@ -55,9 +55,9 @@ export default function AdminSetup() {
       }
 
       const [clientsRes, engRes, usersRes] = await Promise.all([
-        fetch(`${API_URL}/api/clients`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/engagements`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/users`, { credentials: 'include' })
+        fetch(`${API_URL}/api/clients`, { headers: getAuthHeader() }),
+        fetch(`${API_URL}/api/engagements`, { headers: getAuthHeader() }),
+        fetch(`${API_URL}/api/users`, { headers: getAuthHeader() })
       ]);
 
       if (clientsRes.ok) setClients(await clientsRes.json());
@@ -76,7 +76,7 @@ export default function AdminSetup() {
     try {
       await fetch(`${API_URL}/api/auth/logout`, {
         method: 'POST',
-        credentials: 'include'
+        headers: getAuthHeader()
       });
       navigate('/');
     } catch (error) {
@@ -88,7 +88,7 @@ export default function AdminSetup() {
     try {
       const res = await fetch(`${API_URL}/api/seed-data`, {
         method: 'POST',
-        credentials: 'include'
+        headers: getAuthHeader()
       });
       const result = await res.json();
       if (result.seeded) {
@@ -113,7 +113,7 @@ export default function AdminSetup() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: getAuthHeader(),
         body: JSON.stringify(data)
       });
 
@@ -131,7 +131,7 @@ export default function AdminSetup() {
     try {
       const res = await fetch(`${API_URL}/api/clients/${id}`, {
         method: 'DELETE',
-        credentials: 'include'
+        headers: getAuthHeader()
       });
       if (!res.ok) throw new Error('Failed to delete');
       toast.success('Client deleted');
@@ -152,7 +152,7 @@ export default function AdminSetup() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: getAuthHeader(),
         body: JSON.stringify(data)
       });
 
@@ -173,7 +173,7 @@ export default function AdminSetup() {
     try {
       const res = await fetch(`${API_URL}/api/engagements/${id}`, {
         method: 'DELETE',
-        credentials: 'include'
+        headers: getAuthHeader()
       });
       if (!res.ok) throw new Error('Failed to delete');
       toast.success('Engagement deleted');
@@ -194,7 +194,7 @@ export default function AdminSetup() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: getAuthHeader(),
         body: JSON.stringify(data)
       });
 
