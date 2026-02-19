@@ -1644,38 +1644,42 @@ async def seed_users_on_startup():
         
         logger.info("Seeding CompassX users...")
         
-        # CompassX Users - seth.cushing as ADMIN
+        # Default password for all consultants
+        default_password = "CompassX2026!"
+        admin_password = "CompassX2026!"
+        
+        # CompassX Users - seth.cushing as ADMIN with specific password
         compassx_users = [
-            User(name="Seth Cushing", email="seth.cushing@compassx.com", role=UserRole.ADMIN),
-            User(name="Ashley Clark", email="ashley.clark@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Brian Clements", email="brian.clements@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Brian Snowden", email="brian.snowden@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Bryan Posso", email="bryan.posso@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Chris McConnell", email="chris.mcconnell@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Christopher Grant", email="christopher.grant@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Daniel Eimen", email="daniel.eimen@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Deepak Sivaraman", email="deepak.sivaraman@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Fifi Thrift", email="fifi.thrift@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Keilan Malone", email="keilan.malone@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Kyle Kim", email="kyle.kim@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Matt Kalina", email="matt.kalina@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Padmanabhan Satyamoorthy", email="paddy.satyamoorthy@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Raquel Edwards", email="raquel.edwards@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Rey Khachatourian", email="rey.khachatourian@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Ricardo Gonzales", email="ricardo.gonzales@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Saif Quaderi", email="saif.quaderi@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Sandeep Komuravelli", email="sandeep.komuravelli@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Shane Hogan", email="shane.hogan@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Sim Singh", email="sim.singh@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Steve Marcott", email="steve.marcott@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Trinh Do", email="trinh.do@compassx.com", role=UserRole.CONSULTANT),
-            User(name="Victoria Pearson", email="victoria.pearson@compassx.com", role=UserRole.CONSULTANT),
+            User(name="Seth Cushing", email="seth.cushing@compassx.com", role=UserRole.ADMIN, password_hash=hash_password(admin_password)),
+            User(name="Ashley Clark", email="ashley.clark@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Brian Clements", email="brian.clements@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Brian Snowden", email="brian.snowden@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Bryan Posso", email="bryan.posso@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Chris McConnell", email="chris.mcconnell@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Christopher Grant", email="christopher.grant@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Daniel Eimen", email="daniel.eimen@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Deepak Sivaraman", email="deepak.sivaraman@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Fifi Thrift", email="fifi.thrift@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Keilan Malone", email="keilan.malone@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Kyle Kim", email="kyle.kim@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Matt Kalina", email="matt.kalina@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Padmanabhan Satyamoorthy", email="paddy.satyamoorthy@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Raquel Edwards", email="raquel.edwards@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Rey Khachatourian", email="rey.khachatourian@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Ricardo Gonzales", email="ricardo.gonzales@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Saif Quaderi", email="saif.quaderi@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Sandeep Komuravelli", email="sandeep.komuravelli@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Shane Hogan", email="shane.hogan@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Sim Singh", email="sim.singh@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Steve Marcott", email="steve.marcott@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Trinh Do", email="trinh.do@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
+            User(name="Victoria Pearson", email="victoria.pearson@compassx.com", role=UserRole.CONSULTANT, password_hash=hash_password(default_password)),
         ]
         
         for user in compassx_users:
             await db.users.insert_one(serialize_doc(user.model_dump()))
         
-        logger.info(f"Successfully seeded {len(compassx_users)} CompassX users")
+        logger.info(f"Successfully seeded {len(compassx_users)} CompassX users with passwords")
         
     except Exception as e:
         logger.error(f"Error seeding users on startup: {e}")
