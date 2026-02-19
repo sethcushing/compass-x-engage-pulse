@@ -1,11 +1,10 @@
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { Toaster } from "./components/ui/sonner";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import "@/App.css";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
-import AuthCallback from "./pages/AuthCallback";
 import ConsultantDashboard from "./pages/ConsultantDashboard";
 import PortfolioDashboard from "./pages/PortfolioDashboard";
 import EngagementDetail from "./pages/EngagementDetail";
@@ -14,15 +13,26 @@ import AdminSetup from "./pages/AdminSetup";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-// REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+// Helper to get auth header
+export const getAuthHeader = () => {
+  const token = localStorage.getItem('token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
+
+// Helper to get current user from localStorage
+export const getCurrentUser = () => {
+  const userStr = localStorage.getItem('user');
+  return userStr ? JSON.parse(userStr) : null;
+};
+
+// Helper to logout
+export const logout = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.location.href = '/';
+};
+
 function AppRouter() {
-  const location = useLocation();
-  
-  // Check URL fragment for session_id synchronously during render
-  if (location.hash?.includes('session_id=')) {
-    return <AuthCallback />;
-  }
-  
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
@@ -40,8 +50,7 @@ function AppRouter() {
 
 // Role-based redirect component
 function RoleBasedRedirect() {
-  const location = useLocation();
-  const user = location.state?.user;
+  const user = getCurrentUser();
   
   if (!user) {
     return <Navigate to="/" replace />;
@@ -57,38 +66,42 @@ function RoleBasedRedirect() {
 // Protected route component
 function ProtectedRoute({ children, requiredRoles }) {
   const location = useLocation();
-  const [isAuthenticated, setIsAuthenticated] = useState(location.state?.user ? true : null);
-  const [user, setUser] = useState(location.state?.user || null);
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const [user, setUser] = useState(location.state?.user || getCurrentUser());
   
   useEffect(() => {
-    // If user data passed from AuthCallback or previous navigation, skip auth check
-    if (location.state?.user) {
-      setUser(location.state.user);
-      setIsAuthenticated(true);
+    // Check if we have a valid token
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      setIsAuthenticated(false);
       return;
     }
     
-    const checkAuth = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/auth/me`, {
-          credentials: 'include'
+    // If user data passed from navigation or localStorage, verify token
+    if (user) {
+      // Verify token is still valid
+      fetch(`${API_URL}/api/auth/me`, {
+        headers: getAuthHeader()
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Token invalid');
+          return res.json();
+        })
+        .then(userData => {
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+          setIsAuthenticated(true);
+        })
+        .catch(() => {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setIsAuthenticated(false);
         });
-        
-        if (!response.ok) {
-          throw new Error('Not authenticated');
-        }
-        
-        const userData = await response.json();
-        setUser(userData);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        setIsAuthenticated(false);
-      }
-    };
-    
-    checkAuth();
-  }, [location.state?.user]);
+    } else {
+      setIsAuthenticated(false);
+    }
+  }, []);
   
   // Loading state
   if (isAuthenticated === null) {
