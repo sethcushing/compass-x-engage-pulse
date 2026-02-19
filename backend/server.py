@@ -411,6 +411,36 @@ class ActivityLog(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # ===================== HELPER FUNCTIONS =====================
+def hash_password(password: str) -> str:
+    """Hash a password using SHA-256 with salt"""
+    salt = "engagement_pulse_salt_2026"
+    return hashlib.sha256(f"{password}{salt}".encode()).hexdigest()
+
+def verify_password(password: str, password_hash: str) -> bool:
+    """Verify a password against its hash"""
+    return hash_password(password) == password_hash
+
+def create_jwt_token(user_id: str, email: str, role: str) -> str:
+    """Create a JWT token"""
+    payload = {
+        "user_id": user_id,
+        "email": email,
+        "role": role,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS),
+        "iat": datetime.now(timezone.utc)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def decode_jwt_token(token: str) -> Optional[dict]:
+    """Decode and verify a JWT token"""
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
+
 def get_current_week_start():
     """Get the Monday of the current week"""
     today = datetime.now(timezone.utc)
