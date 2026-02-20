@@ -822,7 +822,8 @@ function RiskDialog({ open, data, onClose, onSave }) {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="OPEN">Open</SelectItem>
-                <SelectItem value="MITIGATED">Mitigated</SelectItem>
+                <SelectItem value="MITIGATING">Mitigating</SelectItem>
+                <SelectItem value="ACCEPTED">Accepted</SelectItem>
                 <SelectItem value="CLOSED">Closed</SelectItem>
               </SelectContent>
             </Select>
