@@ -742,7 +742,7 @@ function MilestoneDialog({ open, data, onClose, onSave }) {
 // Risk Dialog Component
 function RiskDialog({ open, data, onClose, onSave }) {
   const [form, setForm] = useState({
-    title: '', description: '', category: 'TECHNICAL', probability: 'MEDIUM', impact: 'MEDIUM', mitigation_plan: '', status: 'OPEN'
+    title: '', description: '', category: 'TECH', probability: 'MEDIUM', impact: 'MEDIUM', mitigation_plan: '', status: 'OPEN'
   });
 
   useEffect(() => {
@@ -750,14 +750,14 @@ function RiskDialog({ open, data, onClose, onSave }) {
       setForm({
         title: data.title || '',
         description: data.description || '',
-        category: data.category || 'TECHNICAL',
+        category: data.category || 'TECH',
         probability: data.probability || 'MEDIUM',
         impact: data.impact || 'MEDIUM',
         mitigation_plan: data.mitigation_plan || '',
         status: data.status || 'OPEN'
       });
     } else {
-      setForm({ title: '', description: '', category: 'TECHNICAL', probability: 'MEDIUM', impact: 'MEDIUM', mitigation_plan: '', status: 'OPEN' });
+      setForm({ title: '', description: '', category: 'TECH', probability: 'MEDIUM', impact: 'MEDIUM', mitigation_plan: '', status: 'OPEN' });
     }
   }, [data, open]);
 
@@ -782,10 +782,14 @@ function RiskDialog({ open, data, onClose, onSave }) {
               <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="TECHNICAL">Technical</SelectItem>
-                  <SelectItem value="RESOURCE">Resource</SelectItem>
+                  <SelectItem value="TECH">Technical</SelectItem>
                   <SelectItem value="SCOPE">Scope</SelectItem>
-                  <SelectItem value="EXTERNAL">External</SelectItem>
+                  <SelectItem value="SCHEDULE">Schedule</SelectItem>
+                  <SelectItem value="RESOURCING">Resourcing</SelectItem>
+                  <SelectItem value="DEPENDENCY">Dependency</SelectItem>
+                  <SelectItem value="SECURITY">Security</SelectItem>
+                  <SelectItem value="BUDGET">Budget</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
