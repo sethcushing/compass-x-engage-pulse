@@ -100,7 +100,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen login-background relative">
       {/* Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-sky-900/80 via-slate-900/70 to-slate-900/80"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/60 via-teal-900/50 to-sky-900/60"></div>
       
       {/* Content */}
       <div className="relative z-10 min-h-screen flex flex-col">
