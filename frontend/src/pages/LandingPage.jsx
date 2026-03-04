@@ -100,15 +100,15 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen login-background relative">
       {/* Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/60 via-teal-900/50 to-sky-900/60"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/50 via-teal-900/40 to-sky-900/50"></div>
       
       {/* Content */}
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header */}
-        <header className="px-6 py-4">
+        <header className="px-6 py-4 bg-white/5 backdrop-blur-md border-b border-white/10">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-sky-500 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-sky-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg shadow-sky-500/30">
                 <Activity className="w-6 h-6 text-white" />
               </div>
               <span className="text-xl font-bold text-white font-heading">Engagement Pulse</span>
@@ -121,30 +121,30 @@ export default function LandingPage() {
           <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
             {/* Left - Text or Login Form */}
             {showLoginForm ? (
-              <Card className="bg-white/95 backdrop-blur-lg shadow-2xl max-w-md mx-auto w-full" data-testid="login-card">
+              <Card className="bg-white/20 backdrop-blur-xl border border-white/30 shadow-2xl max-w-md mx-auto w-full" data-testid="login-card">
                 <CardHeader className="text-center pb-2">
-                  <div className="w-14 h-14 bg-sky-500 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <div className="w-14 h-14 bg-gradient-to-br from-sky-400 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-sky-500/30">
                     <Activity className="w-8 h-8 text-white" />
                   </div>
-                  <CardTitle className="text-2xl font-heading text-slate-900">Welcome Back</CardTitle>
-                  <p className="text-slate-500 text-sm mt-1">Sign in to access your dashboard</p>
+                  <CardTitle className="text-2xl font-heading text-white">Welcome Back</CardTitle>
+                  <p className="text-white/70 text-sm mt-1">Sign in to access your dashboard</p>
                 </CardHeader>
                 <CardContent className="pt-4">
                   <form onSubmit={handleLogin} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email" className="text-white/90">Email</Label>
                       <Input
                         id="email"
                         type="email"
                         placeholder="you@compassx.com"
                         value={credentials.email}
                         onChange={(e) => setCredentials(c => ({ ...c, email: e.target.value }))}
-                        className="h-11"
+                        className="h-11 bg-white/20 border-white/30 text-white placeholder:text-white/50 focus:bg-white/30 focus:border-white/50"
                         data-testid="email-input"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
+                      <Label htmlFor="password" className="text-white/90">Password</Label>
                       <div className="relative">
                         <Input
                           id="password"
@@ -152,13 +152,13 @@ export default function LandingPage() {
                           placeholder="Enter your password"
                           value={credentials.password}
                           onChange={(e) => setCredentials(c => ({ ...c, password: e.target.value }))}
-                          className="h-11 pr-10"
+                          className="h-11 pr-10 bg-white/20 border-white/30 text-white placeholder:text-white/50 focus:bg-white/30 focus:border-white/50"
                           data-testid="password-input"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white"
                         >
                           {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
@@ -167,7 +167,7 @@ export default function LandingPage() {
                     <Button 
                       type="submit"
                       disabled={isLoading}
-                      className="w-full h-11 bg-sky-500 hover:bg-sky-600 text-white font-semibold"
+                      className="w-full h-11 bg-white text-sky-600 hover:bg-white/90 font-semibold shadow-lg"
                       data-testid="login-submit-btn"
                     >
                       {isLoading ? "Signing in..." : "Sign In"}
@@ -176,7 +176,7 @@ export default function LandingPage() {
                   <div className="mt-4 text-center">
                     <button 
                       onClick={() => setShowLoginForm(false)}
-                      className="text-sm text-slate-500 hover:text-sky-600"
+                      className="text-sm text-white/70 hover:text-white"
                     >
                       ← Back to home
                     </button>
@@ -229,14 +229,14 @@ export default function LandingPage() {
               {features.map((feature, index) => (
                 <div 
                   key={index}
-                  className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 hover:bg-white/15 transition-colors duration-200"
+                  className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:bg-white/20 hover:border-white/30 transition-all duration-300 hover:transform hover:-translate-y-1 hover:shadow-xl hover:shadow-black/10"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  <div className="w-12 h-12 bg-sky-500/20 rounded-lg flex items-center justify-center mb-4">
-                    <feature.icon className="w-6 h-6 text-sky-400" />
+                  <div className="w-12 h-12 bg-gradient-to-br from-sky-400/30 to-cyan-400/30 rounded-xl flex items-center justify-center mb-4 backdrop-blur-sm border border-white/20">
+                    <feature.icon className="w-6 h-6 text-white" />
                   </div>
                   <h3 className="text-lg font-semibold text-white mb-2 font-heading">{feature.title}</h3>
-                  <p className="text-sm text-slate-300">{feature.description}</p>
+                  <p className="text-sm text-white/70">{feature.description}</p>
                 </div>
               ))}
             </div>
