@@ -1,171 +1,92 @@
 # Engagement Pulse - Product Requirements Document
 
-## Overview
-**Product Name:** Engagement Pulse  
-**Purpose:** Internal web app for consulting firms to track weekly engagement health  
-**Date Created:** February 13, 2026
-**Last Updated:** December 2025
-
 ## Original Problem Statement
-Build an internal web app called "Engagement Pulse" for a consulting firm where:
-- Consultants submit weekly pulse updates for their engagements
-- Leadership can view engagement health across clients
-- Drill into risks/issues/milestones/contacts
-- Track RAG status over time
+Build an internal web app called "Engagement Pulse" for a consulting firm. Consultants submit weekly status updates, and leadership tracks engagement health (RAG status), risks, issues, and milestones. The application derives a `health_score` for each engagement.
 
 ## User Personas
+- **Consultants**: Submit weekly pulses, manage milestones/risks/issues/contacts for their engagement
+- **Leads**: View portfolio dashboard, drill into engagement details
+- **Admins**: Full access to manage clients, engagements, users, and all data
 
-### 1. Consultant
-- Assigned to exactly one engagement
-- Submits weekly pulse updates
-- Views their own engagement details (read-only for milestones, risks, issues)
-
-### 2. Engagement Lead
-- Oversees multiple engagements
-- Full visibility across all clients/engagements
-- Can manage engagement-level objects (milestones, risks, issues, contacts)
-
-### 3. Admin
-- Full system access
-- Can manage users, clients, engagements
-- Can reassign consultants to engagements
-
-## Core Requirements
-
-### Authentication
-- Google OAuth via Emergent Auth
-- Role-based access control (CONSULTANT, LEAD, ADMIN)
-- Session-based authentication with httpOnly cookies
-
-### Data Model
-- Users (id, name, email, role, is_active)
-- Clients (id, client_name, industry, notes, primary_contact)
-- Engagements (id, client_id, engagement_name, code, consultant_user_id, dates, rag_status, health_score, completed_date)
-- WeeklyPulses (id, engagement_id, week_start, rag_status, what_went_well, delivered, issues, roadblocks, plan_next_week)
-- Milestones (id, engagement_id, title, due_date, status, completion_percent)
-- Risks (id, engagement_id, title, category, probability, impact, mitigation_plan, status)
-- Issues (id, engagement_id, title, severity, status, resolution)
-- Contacts (id, engagement_id, name, title, email, phone, type)
-
-### Health Score Calculation
-- Base: 100
-- RAG AMBER: -15
-- RAG RED: -35
-- Critical Issue: -15 per open
-- High Issue: -8 per open
-- Medium Issue: -4 per open
-- Low Issue: -2 per open
-- High/High Risk (open): -10 per
-- Missing current week pulse: -10
-- Floor: 0
+## Core Architecture
+- **Backend**: FastAPI + MongoDB (Motor async driver)
+- **Frontend**: React + Tailwind CSS + shadcn/ui
+- **Auth**: JWT (email/password) with role-based access
+- **Deployment**: Docker (multi-stage) for Koyeb
 
 ## What's Been Implemented
 
-### Backend (FastAPI + MongoDB)
-- [x] All data models and enums
-- [x] Google OAuth authentication flow
-- [x] Session management with cookies
-- [x] CRUD endpoints for all entities
-- [x] Health score calculation
-- [x] Dashboard summary endpoint
-- [x] RAG trend endpoint
-- [x] Demo data seeding
-- [x] Role-based access control
-- [x] Engagement complete functionality
+### Authentication & Authorization
+- JWT token-based auth with email/password
+- Auto-seeding of 24 CompassX users on startup
+- Role-based route protection (CONSULTANT, LEAD, ADMIN)
+- Password change & admin password reset
 
-### Frontend (React + Shadcn UI)
-- [x] Landing page with Google OAuth login
-- [x] Auth callback handling
-- [x] Protected routes with role-based redirects
-- [x] Portfolio Dashboard (Lead/Admin view)
-  - RAG overview cards
-  - Missing pulses indicator
-  - Critical issues list
-  - High impact risks list
-  - Upcoming milestones
-  - Engagement cards with filters
-  - Add/Edit/Delete engagements, clients, users
-- [x] Engagement Detail page
-  - Overview tab with RAG trend
-  - Pulses tab with history
-  - Milestones tab with CRUD
-  - Risks tab with CRUD
-  - Issues tab with CRUD
-  - Contacts tab with CRUD
-- [x] Consultant Dashboard (My Engagement view)
-  - Current engagement overview with RAG status & health score
-  - Pulse due notification banner
-  - Current week's pulse section
-  - Pulse history timeline
-  - Read-only milestones/risks/issues tabs
-- [x] Weekly Pulse Form
-  - RAG status selection
-  - All required fields (what went well, delivered, issues, roadblocks, plan next week)
-  - Optional fields (hours worked, sentiment)
-  - Save draft / Submit functionality
-  - Read-only mode for non-consultants or after week end
-- [x] Admin Setup page
-  - Clients CRUD
-  - Engagements CRUD
-  - Users management
-  - Seed demo data button
+### Pages & Features
+1. **Landing Page** - Glassmorphic ocean-themed login with beachy background
+2. **Consultant Dashboard** (`/my-engagement`)
+   - 4-blocker overview (Pulse, Milestones, Risks, Issues)
+   - Current week's pulse status
+   - Full CRUD for milestones, risks, issues, contacts
+   - Milestone date change tracking with history dialogs
+   - Pulse history
+3. **Portfolio Dashboard** (`/portfolio`) - Admin/Lead view
+   - RAG status summary (GREEN/AMBER/RED counts)
+   - Engagement cards with health scores
+   - Client & consultant management
+   - Missing pulse tracking
+4. **Engagement Detail** (`/engagement/:id`)
+   - Overview tab with 4-blocker, RAG trend bar chart, health score breakdown
+   - Pulses tab with history
+   - Milestones tab with date change tracking (original date lock, change history)
+   - Risks tab with full CRUD
+   - Issues tab with full CRUD
+   - Contacts tab with full CRUD
+5. **Pulse Form** (`/pulse/:engagementId`) - Weekly pulse submission
+6. **Admin Setup** (`/admin`) - Admin management panel
 
-### Design
-- Ocean Executive light theme
-- Manrope (headings) + Inter (body) fonts
-- Sky/Slate color palette
-- Card-based layouts with drill-down panels
-- Glass-morphism effects on topbar
-- RAG status badges (Green/Amber/Red)
-- Health score display
+### Backend Endpoints
+- Auth: `/api/auth/login`, `/api/auth/me`, `/api/auth/change-password`
+- CRUD: `/api/engagements`, `/api/milestones`, `/api/risks`, `/api/issues`, `/api/contacts`, `/api/pulses`, `/api/clients`, `/api/users`
+- Milestone date tracking: `/api/milestones/{id}/change-date`, `/api/milestones/{id}/date-history`
+- 4-Blocker: `/api/engagements/{id}/four-blocker`
+- Dashboard: `/api/dashboard/summary`, `/api/dashboard/rag-trend/{id}`
+- Health: `/api/health`
+
+### Role-Based Permissions (Audited)
+- Consultants: Can CRUD milestones/risks/issues/contacts on their OWN engagement only
+- Leads/Admins: Full access to all engagements
+- Engagement creation: Admin only
+- User management: Admin only
+
+### Bugs Fixed
+- Fixed ConsultantDashboard API URLs (path-based → query-param-based)
+- Fixed `db.pulses` → `db.weekly_pulses` in four-blocker endpoint
+- Fixed logger used before definition
+- Fixed ContactType enum mismatch (removed STAKEHOLDER)
+- Fixed datetime comparison bugs (timezone-naive vs timezone-aware)
+- Fixed role permissions for consultant CRUD operations
+
+## Test Credentials
+- **Admin**: seth.cushing@compassx.com / CompassX2026!
+- **Consultant**: ashley.clark@compassx.com / CompassX2026!
+
+## Deployment
+- Dockerfile and koyeb.yaml created
+- MongoDB Atlas connection (user: sethcushing, DB: CompassXEngagePulse)
+- Note: MongoDB Atlas auth issues remain a deployment blocker (user needs to fix Atlas credentials)
 
 ## Prioritized Backlog
 
-### P0 (Critical) - COMPLETED
-- [x] Authentication flow
-- [x] Dashboard views (Portfolio + Consultant)
-- [x] Pulse submission
-- [x] CRUD operations for all entities
-- [x] Consultant "My Engagement" page
-- [x] Weekly Pulse Form with save draft/submit
+### P1
+- AI-powered summary using Emergent LLM key (endpoint exists but needs API key integration)
+- Assign CompassX consultants to engagements (currently demo users are assigned)
 
-### P1 (High Priority) - Next Phase
-- [ ] Email notifications for pulse due dates
-- [ ] Bulk pulse submission reminders
-- [ ] Export reports to PDF/Excel
-- [ ] Advanced filtering on portfolio dashboard
+### P2
+- Stabilize Koyeb deployment (MongoDB connection issues - requires user action on Atlas)
+- Refactor ConsultantDashboard.jsx into smaller components
 
-### P2 (Medium Priority)
-- [ ] Activity log display in UI
-- [ ] Audit trail for all changes
-- [ ] Dashboard customization per user
-- [ ] Integration with calendar for milestones
-
-### P3 (Low Priority)
-- [ ] Mobile-optimized views
-- [ ] Dark mode toggle
-- [ ] Slack integration for notifications
-- [ ] Custom RAG threshold configuration
-
-## Technical Notes
-- Backend: FastAPI on port 8001
-- Frontend: React on port 3000
-- Database: MongoDB (test_database)
-- Authentication: Emergent Google OAuth
-- Styling: Tailwind CSS + Shadcn UI components
-
-## Deployment
-- **Dockerfile**: Multi-stage build (Node.js for frontend build, Python for runtime)
-- **Platform**: Koyeb (or any Docker-compatible platform)
-- **Configuration**: See `DEPLOYMENT.md` for full instructions
-- **Files Added**: 
-  - `/app/Dockerfile` - Production Docker image
-  - `/app/.dockerignore` - Build optimization
-  - `/app/koyeb.yaml` - Koyeb deployment config
-  - `/app/DEPLOYMENT.md` - Deployment guide
-
-## Test Results (December 2025)
-- Backend API: 100% pass rate (48/48 tests)
-- All endpoints correctly enforce authentication
-- Landing page verified working with ocean-style theme
-- Seed data exists for all entities
+### P3
+- Enhanced AI summary with error handling
+- Further Koyeb deployment hardening
+- Accessibility improvements (aria-describedby for dialogs)
