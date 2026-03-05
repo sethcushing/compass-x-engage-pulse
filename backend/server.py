@@ -17,6 +17,13 @@ import hashlib
 import secrets
 import jwt
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -27,9 +34,6 @@ JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
 
 # Security
 security = HTTPBearer(auto_error=False)
-
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -260,6 +264,15 @@ class WeeklyPulseUpdate(BaseModel):
     sentiment: Optional[Sentiment] = None
     is_draft: Optional[bool] = None
 
+class MilestoneDateChange(BaseModel):
+    """Tracks history of milestone date changes"""
+    changed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    changed_by_user_id: str
+    changed_by_name: str
+    previous_date: datetime
+    new_date: datetime
+    reason: str
+
 class Milestone(BaseModel):
     model_config = ConfigDict(extra="ignore")
     milestone_id: str = Field(default_factory=lambda: f"ms_{uuid.uuid4().hex[:12]}")
@@ -268,6 +281,8 @@ class Milestone(BaseModel):
     description: Optional[str] = None
     owner: Optional[str] = None
     due_date: datetime
+    original_due_date: Optional[datetime] = None  # Locked original date
+    date_change_history: List[dict] = Field(default_factory=list)  # Track all changes
     status: MilestoneStatus = MilestoneStatus.NOT_STARTED
     completion_percent: int = 0
     notes: Optional[str] = None
@@ -288,10 +303,13 @@ class MilestoneUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     owner: Optional[str] = None
-    due_date: Optional[datetime] = None
     status: Optional[MilestoneStatus] = None
     completion_percent: Optional[int] = None
     notes: Optional[str] = None
+
+class MilestoneDateChangeRequest(BaseModel):
+    new_date: datetime
+    reason: str
 
 class Risk(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -1113,17 +1131,20 @@ async def get_milestones(request: Request, engagement_id: str = None):
 @api_router.post("/milestones", response_model=Milestone)
 async def create_milestone(milestone_data: MilestoneCreate, request: Request):
     """Create a milestone"""
-    user = await require_role(request, [UserRole.ADMIN, UserRole.LEAD])
+    user = await require_auth(request)
     
-    milestone = Milestone(**milestone_data.model_dump())
+    milestone_dict = milestone_data.model_dump()
+    milestone_dict["original_due_date"] = milestone_dict["due_date"]  # Lock original date
+    milestone_dict["date_change_history"] = []
+    milestone = Milestone(**milestone_dict)
     await db.milestones.insert_one(serialize_doc(milestone.model_dump()))
     await log_activity(user["user_id"], EntityType.MILESTONE, milestone.milestone_id, ActionType.CREATE, f"Created milestone: {milestone.title}", milestone_data.engagement_id)
     return milestone
 
 @api_router.put("/milestones/{milestone_id}")
 async def update_milestone(milestone_id: str, milestone_data: MilestoneUpdate, request: Request):
-    """Update a milestone"""
-    user = await require_role(request, [UserRole.ADMIN, UserRole.LEAD])
+    """Update a milestone (cannot change due_date directly - use /change-date endpoint)"""
+    user = await require_auth(request)
     
     update_data = {k: v for k, v in milestone_data.model_dump().items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -1142,13 +1163,93 @@ async def update_milestone(milestone_id: str, milestone_data: MilestoneUpdate, r
     await log_activity(user["user_id"], EntityType.MILESTONE, milestone_id, ActionType.UPDATE, "Updated milestone", milestone.get("engagement_id"))
     return deserialize_doc(milestone)
 
+@api_router.post("/milestones/{milestone_id}/change-date")
+async def change_milestone_date(milestone_id: str, date_change: MilestoneDateChangeRequest, request: Request):
+    """Change milestone due date with tracking and reason"""
+    user = await require_auth(request)
+    
+    # Get current milestone
+    milestone = await db.milestones.find_one({"milestone_id": milestone_id}, {"_id": 0})
+    if not milestone:
+        raise HTTPException(status_code=404, detail="Milestone not found")
+    
+    # Parse current due_date
+    current_due_date = milestone.get("due_date")
+    if isinstance(current_due_date, str):
+        current_due_date = datetime.fromisoformat(current_due_date.replace('Z', '+00:00'))
+    
+    # Create date change record
+    date_change_record = {
+        "changed_at": datetime.now(timezone.utc).isoformat(),
+        "changed_by_user_id": user["user_id"],
+        "changed_by_name": user["name"],
+        "previous_date": current_due_date.isoformat() if isinstance(current_due_date, datetime) else current_due_date,
+        "new_date": date_change.new_date.isoformat(),
+        "reason": date_change.reason
+    }
+    
+    # Get existing history
+    history = milestone.get("date_change_history", [])
+    history.append(date_change_record)
+    
+    # Update milestone
+    update_data = {
+        "due_date": date_change.new_date.isoformat(),
+        "date_change_history": history,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Set original_due_date if not set
+    if not milestone.get("original_due_date"):
+        update_data["original_due_date"] = current_due_date.isoformat() if isinstance(current_due_date, datetime) else current_due_date
+    
+    await db.milestones.update_one({"milestone_id": milestone_id}, {"$set": update_data})
+    
+    await log_activity(
+        user["user_id"], 
+        EntityType.MILESTONE, 
+        milestone_id, 
+        ActionType.UPDATE, 
+        f"Changed due date from {current_due_date} to {date_change.new_date}: {date_change.reason}", 
+        milestone.get("engagement_id")
+    )
+    
+    updated_milestone = await db.milestones.find_one({"milestone_id": milestone_id}, {"_id": 0})
+    return deserialize_doc(updated_milestone)
+
+@api_router.get("/milestones/{milestone_id}/date-history")
+async def get_milestone_date_history(milestone_id: str, request: Request):
+    """Get the date change history for a milestone"""
+    user = await require_auth(request)
+    
+    milestone = await db.milestones.find_one({"milestone_id": milestone_id}, {"_id": 0})
+    if not milestone:
+        raise HTTPException(status_code=404, detail="Milestone not found")
+    
+    return {
+        "milestone_id": milestone_id,
+        "title": milestone.get("title"),
+        "original_due_date": milestone.get("original_due_date"),
+        "current_due_date": milestone.get("due_date"),
+        "date_change_history": milestone.get("date_change_history", [])
+    }
+
 @api_router.delete("/milestones/{milestone_id}")
 async def delete_milestone(milestone_id: str, request: Request):
     """Delete a milestone"""
-    await require_role(request, [UserRole.ADMIN])
-    result = await db.milestones.delete_one({"milestone_id": milestone_id})
-    if result.deleted_count == 0:
+    user = await require_auth(request)
+    
+    milestone = await db.milestones.find_one({"milestone_id": milestone_id}, {"_id": 0})
+    if not milestone:
         raise HTTPException(status_code=404, detail="Milestone not found")
+    
+    # Consultants can only delete milestones on their own engagement
+    if user["role"] == "CONSULTANT":
+        engagement = await db.engagements.find_one({"engagement_id": milestone["engagement_id"]}, {"_id": 0})
+        if not engagement or engagement.get("consultant_user_id") != user["user_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.milestones.delete_one({"milestone_id": milestone_id})
     return {"message": "Milestone deleted"}
 
 # ===================== RISK ENDPOINTS =====================
@@ -1174,7 +1275,7 @@ async def get_risks(request: Request, engagement_id: str = None, status: str = N
 @api_router.post("/risks", response_model=Risk)
 async def create_risk(risk_data: RiskCreate, request: Request):
     """Create a risk"""
-    user = await require_role(request, [UserRole.ADMIN, UserRole.LEAD])
+    user = await require_auth(request)
     
     risk = Risk(**risk_data.model_dump())
     await db.risks.insert_one(serialize_doc(risk.model_dump()))
@@ -1184,7 +1285,17 @@ async def create_risk(risk_data: RiskCreate, request: Request):
 @api_router.put("/risks/{risk_id}")
 async def update_risk(risk_id: str, risk_data: RiskUpdate, request: Request):
     """Update a risk"""
-    user = await require_role(request, [UserRole.ADMIN, UserRole.LEAD])
+    user = await require_auth(request)
+    
+    risk = await db.risks.find_one({"risk_id": risk_id}, {"_id": 0})
+    if not risk:
+        raise HTTPException(status_code=404, detail="Risk not found")
+    
+    # Consultants can only update risks on their own engagement
+    if user["role"] == "CONSULTANT":
+        engagement = await db.engagements.find_one({"engagement_id": risk["engagement_id"]}, {"_id": 0})
+        if not engagement or engagement.get("consultant_user_id") != user["user_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
     
     update_data = {k: v for k, v in risk_data.model_dump().items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -1206,10 +1317,19 @@ async def update_risk(risk_id: str, risk_data: RiskUpdate, request: Request):
 @api_router.delete("/risks/{risk_id}")
 async def delete_risk(risk_id: str, request: Request):
     """Delete a risk"""
-    await require_role(request, [UserRole.ADMIN])
-    result = await db.risks.delete_one({"risk_id": risk_id})
-    if result.deleted_count == 0:
+    user = await require_auth(request)
+    
+    risk = await db.risks.find_one({"risk_id": risk_id}, {"_id": 0})
+    if not risk:
         raise HTTPException(status_code=404, detail="Risk not found")
+    
+    # Consultants can only delete risks on their own engagement
+    if user["role"] == "CONSULTANT":
+        engagement = await db.engagements.find_one({"engagement_id": risk["engagement_id"]}, {"_id": 0})
+        if not engagement or engagement.get("consultant_user_id") != user["user_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.risks.delete_one({"risk_id": risk_id})
     return {"message": "Risk deleted"}
 
 # ===================== ISSUE ENDPOINTS =====================
@@ -1237,7 +1357,7 @@ async def get_issues(request: Request, engagement_id: str = None, status: str = 
 @api_router.post("/issues", response_model=Issue)
 async def create_issue(issue_data: IssueCreate, request: Request):
     """Create an issue"""
-    user = await require_role(request, [UserRole.ADMIN, UserRole.LEAD])
+    user = await require_auth(request)
     
     issue = Issue(**issue_data.model_dump())
     await db.issues.insert_one(serialize_doc(issue.model_dump()))
@@ -1247,7 +1367,17 @@ async def create_issue(issue_data: IssueCreate, request: Request):
 @api_router.put("/issues/{issue_id}")
 async def update_issue(issue_id: str, issue_data: IssueUpdate, request: Request):
     """Update an issue"""
-    user = await require_role(request, [UserRole.ADMIN, UserRole.LEAD])
+    user = await require_auth(request)
+    
+    existing_issue = await db.issues.find_one({"issue_id": issue_id}, {"_id": 0})
+    if not existing_issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+    
+    # Consultants can only update issues on their own engagement
+    if user["role"] == "CONSULTANT":
+        engagement = await db.engagements.find_one({"engagement_id": existing_issue["engagement_id"]}, {"_id": 0})
+        if not engagement or engagement.get("consultant_user_id") != user["user_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
     
     update_data = {k: v for k, v in issue_data.model_dump().items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -1269,10 +1399,19 @@ async def update_issue(issue_id: str, issue_data: IssueUpdate, request: Request)
 @api_router.delete("/issues/{issue_id}")
 async def delete_issue(issue_id: str, request: Request):
     """Delete an issue"""
-    await require_role(request, [UserRole.ADMIN])
-    result = await db.issues.delete_one({"issue_id": issue_id})
-    if result.deleted_count == 0:
+    user = await require_auth(request)
+    
+    issue = await db.issues.find_one({"issue_id": issue_id}, {"_id": 0})
+    if not issue:
         raise HTTPException(status_code=404, detail="Issue not found")
+    
+    # Consultants can only delete issues on their own engagement
+    if user["role"] == "CONSULTANT":
+        engagement = await db.engagements.find_one({"engagement_id": issue["engagement_id"]}, {"_id": 0})
+        if not engagement or engagement.get("consultant_user_id") != user["user_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.issues.delete_one({"issue_id": issue_id})
     return {"message": "Issue deleted"}
 
 # ===================== CONTACT ENDPOINTS =====================
@@ -1295,7 +1434,7 @@ async def get_contacts(request: Request, engagement_id: str = None):
 @api_router.post("/contacts", response_model=Contact)
 async def create_contact(contact_data: ContactCreate, request: Request):
     """Create a contact"""
-    user = await require_role(request, [UserRole.ADMIN, UserRole.LEAD])
+    user = await require_auth(request)
     
     contact = Contact(**contact_data.model_dump())
     await db.contacts.insert_one(serialize_doc(contact.model_dump()))
@@ -1305,7 +1444,17 @@ async def create_contact(contact_data: ContactCreate, request: Request):
 @api_router.put("/contacts/{contact_id}")
 async def update_contact(contact_id: str, contact_data: ContactUpdate, request: Request):
     """Update a contact"""
-    user = await require_role(request, [UserRole.ADMIN, UserRole.LEAD])
+    user = await require_auth(request)
+    
+    existing_contact = await db.contacts.find_one({"contact_id": contact_id}, {"_id": 0})
+    if not existing_contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    
+    # Consultants can only update contacts on their own engagement
+    if user["role"] == "CONSULTANT":
+        engagement = await db.engagements.find_one({"engagement_id": existing_contact["engagement_id"]}, {"_id": 0})
+        if not engagement or engagement.get("consultant_user_id") != user["user_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
     
     update_data = {k: v for k, v in contact_data.model_dump().items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -1325,13 +1474,260 @@ async def update_contact(contact_id: str, contact_data: ContactUpdate, request: 
 @api_router.delete("/contacts/{contact_id}")
 async def delete_contact(contact_id: str, request: Request):
     """Delete a contact"""
-    await require_role(request, [UserRole.ADMIN])
-    result = await db.contacts.delete_one({"contact_id": contact_id})
-    if result.deleted_count == 0:
+    user = await require_auth(request)
+    
+    contact = await db.contacts.find_one({"contact_id": contact_id}, {"_id": 0})
+    if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
+    
+    # Consultants can only delete contacts on their own engagement
+    if user["role"] == "CONSULTANT":
+        engagement = await db.engagements.find_one({"engagement_id": contact["engagement_id"]}, {"_id": 0})
+        if not engagement or engagement.get("consultant_user_id") != user["user_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.contacts.delete_one({"contact_id": contact_id})
     return {"message": "Contact deleted"}
 
-# ===================== ACTIVITY LOG ENDPOINTS =====================
+# ===================== ENGAGEMENT 4-BLOCKER OVERVIEW =====================
+@api_router.get("/engagements/{engagement_id}/four-blocker")
+async def get_engagement_four_blocker(engagement_id: str, request: Request):
+    """Get AI-powered 4-blocker summary for an engagement (Pulse, Milestones, Risks, Issues)"""
+    user = await require_auth(request)
+    
+    # Get engagement
+    engagement = await db.engagements.find_one({"engagement_id": engagement_id}, {"_id": 0})
+    if not engagement:
+        raise HTTPException(status_code=404, detail="Engagement not found")
+    
+    # Get latest pulse
+    latest_pulse = await db.weekly_pulses.find_one(
+        {"engagement_id": engagement_id, "is_draft": {"$ne": True}},
+        {"_id": 0},
+        sort=[("week_start_date", -1)]
+    )
+    
+    # Get milestones
+    milestones = await db.milestones.find({"engagement_id": engagement_id}, {"_id": 0}).sort("due_date", 1).to_list(100)
+    
+    # Get risks
+    risks = await db.risks.find({"engagement_id": engagement_id}, {"_id": 0}).to_list(100)
+    
+    # Get issues
+    issues = await db.issues.find({"engagement_id": engagement_id}, {"_id": 0}).to_list(100)
+    
+    # Calculate milestone stats
+    total_milestones = len(milestones)
+    completed_milestones = len([m for m in milestones if m.get("status") == "DONE"])
+    at_risk_milestones = len([m for m in milestones if m.get("status") == "AT_RISK"])
+    milestones_with_date_changes = len([m for m in milestones if m.get("date_change_history") and len(m.get("date_change_history", [])) > 0])
+    
+    # Upcoming milestones (next 14 days)
+    today = datetime.now(timezone.utc)
+    upcoming = []
+    for ms in milestones:
+        due = ms.get("due_date")
+        if isinstance(due, str):
+            due = datetime.fromisoformat(due.replace('Z', '+00:00'))
+        if due:
+            if due.tzinfo is None:
+                due = due.replace(tzinfo=timezone.utc)
+            if due > today and (due - today).days <= 14 and ms.get("status") != "DONE":
+                upcoming.append(ms)
+    
+    # Overdue milestones
+    overdue = []
+    for ms in milestones:
+        due = ms.get("due_date")
+        if isinstance(due, str):
+            due = datetime.fromisoformat(due.replace('Z', '+00:00'))
+        if due:
+            if due.tzinfo is None:
+                due = due.replace(tzinfo=timezone.utc)
+            if due < today and ms.get("status") != "DONE":
+                overdue.append(ms)
+    
+    # Risk stats
+    open_risks = [r for r in risks if r.get("status") == "OPEN"]
+    high_risks = [r for r in open_risks if r.get("probability") == "HIGH" and r.get("impact") == "HIGH"]
+    
+    # Issue stats
+    open_issues = [i for i in issues if i.get("status") not in ["RESOLVED", "CLOSED"]]
+    critical_issues = [i for i in open_issues if i.get("severity") == "CRITICAL"]
+    high_issues = [i for i in open_issues if i.get("severity") == "HIGH"]
+    
+    # Generate AI summaries
+    pulse_summary = _generate_pulse_summary(latest_pulse) if latest_pulse else {"status": "NO_PULSE", "message": "No pulse submitted yet"}
+    milestone_summary = _generate_milestone_summary(milestones, upcoming, overdue, milestones_with_date_changes)
+    risk_summary = _generate_risk_summary(risks, open_risks, high_risks)
+    issue_summary = _generate_issue_summary(issues, open_issues, critical_issues, high_issues)
+    
+    return {
+        "engagement_id": engagement_id,
+        "engagement_name": engagement.get("engagement_name"),
+        "rag_status": engagement.get("rag_status"),
+        "health_score": engagement.get("health_score"),
+        "pulse_block": {
+            "latest_pulse": latest_pulse,
+            "summary": pulse_summary
+        },
+        "milestones_block": {
+            "total": total_milestones,
+            "completed": completed_milestones,
+            "at_risk": at_risk_milestones,
+            "overdue": len(overdue),
+            "upcoming": upcoming[:5],
+            "overdue_list": overdue[:5],
+            "date_changes_count": milestones_with_date_changes,
+            "summary": milestone_summary
+        },
+        "risks_block": {
+            "total": len(risks),
+            "open": len(open_risks),
+            "high_impact": len(high_risks),
+            "open_risks": open_risks[:5],
+            "summary": risk_summary
+        },
+        "issues_block": {
+            "total": len(issues),
+            "open": len(open_issues),
+            "critical": len(critical_issues),
+            "high": len(high_issues),
+            "open_issues": open_issues[:5],
+            "summary": issue_summary
+        }
+    }
+
+def _generate_pulse_summary(pulse):
+    """Generate AI summary for pulse"""
+    if not pulse:
+        return {"status": "WARNING", "message": "No recent pulse data"}
+    
+    rag = pulse.get("rag_status_this_week", "UNKNOWN")
+    status_map = {"GREEN": "HEALTHY", "AMBER": "ATTENTION", "RED": "CRITICAL"}
+    
+    highlights = []
+    if pulse.get("what_went_well"):
+        highlights.append(f"Wins: {pulse.get('what_went_well')[:100]}...")
+    if pulse.get("roadblocks"):
+        highlights.append(f"Blockers: {pulse.get('roadblocks')[:100]}...")
+    
+    return {
+        "status": status_map.get(rag, "UNKNOWN"),
+        "rag": rag,
+        "message": f"Latest pulse shows {rag} status",
+        "highlights": highlights,
+        "sentiment": pulse.get("sentiment")
+    }
+
+def _generate_milestone_summary(milestones, upcoming, overdue, date_changes):
+    """Generate AI summary for milestones"""
+    if not milestones:
+        return {"status": "INFO", "message": "No milestones defined"}
+    
+    if len(overdue) > 0:
+        return {
+            "status": "CRITICAL",
+            "message": f"{len(overdue)} milestone(s) overdue! {len(upcoming)} due in next 2 weeks.",
+            "action": "Review and update overdue milestones",
+            "date_changes_note": f"{date_changes} milestone(s) had date changes" if date_changes > 0 else None
+        }
+    elif len(upcoming) > 0:
+        return {
+            "status": "ATTENTION",
+            "message": f"{len(upcoming)} milestone(s) due in the next 2 weeks",
+            "action": "Ensure progress is on track",
+            "date_changes_note": f"{date_changes} milestone(s) had date changes" if date_changes > 0 else None
+        }
+    else:
+        completion_rate = (len([m for m in milestones if m.get("status") == "DONE"]) / len(milestones)) * 100 if milestones else 0
+        return {
+            "status": "HEALTHY",
+            "message": f"All milestones on track. {completion_rate:.0f}% complete.",
+            "date_changes_note": f"{date_changes} milestone(s) had date changes" if date_changes > 0 else None
+        }
+
+def _generate_risk_summary(risks, open_risks, high_risks):
+    """Generate AI summary for risks"""
+    if not risks:
+        return {"status": "INFO", "message": "No risks identified"}
+    
+    if len(high_risks) > 0:
+        return {
+            "status": "CRITICAL",
+            "message": f"{len(high_risks)} high-probability/high-impact risk(s) require immediate attention",
+            "action": "Review mitigation plans for high risks"
+        }
+    elif len(open_risks) > 0:
+        return {
+            "status": "ATTENTION",
+            "message": f"{len(open_risks)} open risk(s) being monitored",
+            "action": "Continue monitoring and mitigation efforts"
+        }
+    else:
+        return {
+            "status": "HEALTHY",
+            "message": "All risks mitigated or closed"
+        }
+
+def _generate_issue_summary(issues, open_issues, critical_issues, high_issues):
+    """Generate AI summary for issues"""
+    if not issues:
+        return {"status": "INFO", "message": "No issues reported"}
+    
+    if len(critical_issues) > 0:
+        return {
+            "status": "CRITICAL",
+            "message": f"{len(critical_issues)} critical issue(s) need immediate resolution",
+            "action": "Escalate and resolve critical issues"
+        }
+    elif len(high_issues) > 0:
+        return {
+            "status": "ATTENTION",
+            "message": f"{len(high_issues)} high-priority issue(s) in progress",
+            "action": "Track progress on high-priority issues"
+        }
+    elif len(open_issues) > 0:
+        return {
+            "status": "MONITORING",
+            "message": f"{len(open_issues)} open issue(s) being tracked"
+        }
+    else:
+        return {
+            "status": "HEALTHY",
+            "message": "All issues resolved"
+        }
+
+@api_router.get("/milestones/date-changes")
+async def get_all_milestone_date_changes(request: Request, engagement_id: str = None):
+    """Get all milestone date changes across engagements"""
+    user = await require_auth(request)
+    
+    query = {"date_change_history": {"$exists": True, "$ne": []}}
+    if engagement_id:
+        query["engagement_id"] = engagement_id
+    
+    milestones = await db.milestones.find(query, {"_id": 0}).to_list(500)
+    
+    # Flatten and enrich the changes
+    all_changes = []
+    for ms in milestones:
+        engagement = await db.engagements.find_one({"engagement_id": ms.get("engagement_id")}, {"_id": 0, "engagement_name": 1, "client_id": 1})
+        for change in ms.get("date_change_history", []):
+            all_changes.append({
+                "milestone_id": ms.get("milestone_id"),
+                "milestone_title": ms.get("title"),
+                "engagement_id": ms.get("engagement_id"),
+                "engagement_name": engagement.get("engagement_name") if engagement else "Unknown",
+                "original_due_date": ms.get("original_due_date"),
+                "current_due_date": ms.get("due_date"),
+                **change
+            })
+    
+    # Sort by changed_at descending
+    all_changes.sort(key=lambda x: x.get("changed_at", ""), reverse=True)
+    
+    return all_changes
 @api_router.get("/activity-logs")
 async def get_activity_logs(request: Request, engagement_id: str = None, limit: int = 50):
     """Get activity logs"""
@@ -1416,8 +1812,18 @@ async def get_dashboard_summary(request: Request):
             ms["engagement"] = deserialize_doc(eng) if eng else None
             filtered_milestones.append(deserialize_doc(ms))
     
-    # Sort by due_date
-    filtered_milestones.sort(key=lambda x: x.get("due_date", now))
+    # Sort by due_date - handle both string and datetime objects
+    def get_sort_date(ms):
+        due = ms.get("due_date")
+        if isinstance(due, str):
+            due = datetime.fromisoformat(due.replace('Z', '+00:00'))
+        if due is None:
+            return now
+        if due.tzinfo is None:
+            due = due.replace(tzinfo=timezone.utc)
+        return due
+    
+    filtered_milestones.sort(key=get_sort_date)
     
     return {
         "rag_counts": rag_counts,
@@ -1645,13 +2051,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

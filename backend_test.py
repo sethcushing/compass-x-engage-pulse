@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 # Use the public endpoint from frontend config
-BASE_URL = "https://engagement-track-1.preview.emergentagent.com/api"
+BASE_URL = "https://consultant-hub-58.preview.emergentagent.com/api"
 
 class EngagementPulseAPITester:
     def __init__(self):

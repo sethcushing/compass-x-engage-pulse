@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { 
   Activity, LogOut, Calendar, AlertTriangle, CheckCircle2, 
   Clock, FileText, Users, Target, AlertCircle, ChevronRight,
-  TrendingUp, Bell, Plus, Edit2, Trash2, Phone, Mail
+  TrendingUp, Bell, Plus, Edit2, Trash2, Phone, Mail, History, Lock
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { getAuthHeader, getCurrentUser, logout } from "../App";
@@ -31,10 +31,13 @@ export default function ConsultantDashboard() {
   const [risks, setRisks] = useState([]);
   const [issues, setIssues] = useState([]);
   const [contacts, setContacts] = useState([]);
+  const [fourBlocker, setFourBlocker] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Dialog states
   const [milestoneDialog, setMilestoneDialog] = useState({ open: false, data: null });
+  const [dateChangeDialog, setDateChangeDialog] = useState({ open: false, milestone: null });
+  const [dateHistoryDialog, setDateHistoryDialog] = useState({ open: false, milestone: null });
   const [riskDialog, setRiskDialog] = useState({ open: false, data: null });
   const [issueDialog, setIssueDialog] = useState({ open: false, data: null });
   const [contactDialog, setContactDialog] = useState({ open: false, data: null });
@@ -59,13 +62,14 @@ export default function ConsultantDashboard() {
           const eng = engagements[0];
           setEngagement(eng);
 
-          const [pulseRes, historyRes, msRes, riskRes, issueRes, contactRes] = await Promise.all([
+          const [pulseRes, historyRes, msRes, riskRes, issueRes, contactRes, fourBlockerRes] = await Promise.all([
             fetch(`${API_URL}/api/pulses/current-week/${eng.engagement_id}`, { headers: getAuthHeader() }),
-            fetch(`${API_URL}/api/pulses/engagement/${eng.engagement_id}`, { headers: getAuthHeader() }),
-            fetch(`${API_URL}/api/milestones/engagement/${eng.engagement_id}`, { headers: getAuthHeader() }),
-            fetch(`${API_URL}/api/risks/engagement/${eng.engagement_id}`, { headers: getAuthHeader() }),
-            fetch(`${API_URL}/api/issues/engagement/${eng.engagement_id}`, { headers: getAuthHeader() }),
-            fetch(`${API_URL}/api/contacts/engagement/${eng.engagement_id}`, { headers: getAuthHeader() })
+            fetch(`${API_URL}/api/pulses?engagement_id=${eng.engagement_id}`, { headers: getAuthHeader() }),
+            fetch(`${API_URL}/api/milestones?engagement_id=${eng.engagement_id}`, { headers: getAuthHeader() }),
+            fetch(`${API_URL}/api/risks?engagement_id=${eng.engagement_id}`, { headers: getAuthHeader() }),
+            fetch(`${API_URL}/api/issues?engagement_id=${eng.engagement_id}`, { headers: getAuthHeader() }),
+            fetch(`${API_URL}/api/contacts?engagement_id=${eng.engagement_id}`, { headers: getAuthHeader() }),
+            fetch(`${API_URL}/api/engagements/${eng.engagement_id}/four-blocker`, { headers: getAuthHeader() })
           ]);
 
           if (pulseRes.ok) setCurrentPulse(await pulseRes.json());
@@ -74,6 +78,7 @@ export default function ConsultantDashboard() {
           if (riskRes.ok) setRisks(await riskRes.json());
           if (issueRes.ok) setIssues(await issueRes.json());
           if (contactRes.ok) setContacts(await contactRes.json());
+          if (fourBlockerRes.ok) setFourBlocker(await fourBlockerRes.json());
         }
       }
     } catch (error) {
@@ -103,6 +108,22 @@ export default function ConsultantDashboard() {
       if (!res.ok) throw new Error('Failed to save milestone');
       toast.success(data.milestone_id ? 'Milestone updated' : 'Milestone created');
       setMilestoneDialog({ open: false, data: null });
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleChangeMilestoneDate = async (milestoneId, newDate, reason) => {
+    try {
+      const res = await fetch(`${API_URL}/api/milestones/${milestoneId}/change-date`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify({ new_date: newDate, reason })
+      });
+      if (!res.ok) throw new Error('Failed to change date');
+      toast.success('Milestone date updated');
+      setDateChangeDialog({ open: false, milestone: null });
       fetchData();
     } catch (error) {
       toast.error(error.message);
@@ -344,6 +365,112 @@ export default function ConsultantDashboard() {
           </CardContent>
         </Card>
 
+        {/* 4-Blocker Overview */}
+        {fourBlocker && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" data-testid="four-blocker">
+            {/* Pulse Block */}
+            <Card className={`glass-card border-l-4 ${
+              fourBlocker.pulse_block.summary?.status === 'CRITICAL' ? 'border-l-red-500' :
+              fourBlocker.pulse_block.summary?.status === 'ATTENTION' ? 'border-l-amber-500' :
+              fourBlocker.pulse_block.summary?.status === 'HEALTHY' ? 'border-l-emerald-500' : 'border-l-slate-300'
+            }`}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="w-5 h-5 text-sky-500" />
+                  <h3 className="font-heading font-semibold text-slate-900">Pulse Status</h3>
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge className={
+                    fourBlocker.pulse_block.summary?.rag === 'GREEN' ? 'bg-emerald-100 text-emerald-700' :
+                    fourBlocker.pulse_block.summary?.rag === 'AMBER' ? 'bg-amber-100 text-amber-700' :
+                    fourBlocker.pulse_block.summary?.rag === 'RED' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'
+                  }>
+                    {fourBlocker.pulse_block.summary?.rag || 'NO DATA'}
+                  </Badge>
+                </div>
+                <p className="text-sm text-slate-600">{fourBlocker.pulse_block.summary?.message}</p>
+                {fourBlocker.pulse_block.summary?.highlights?.length > 0 && (
+                  <ul className="mt-2 text-xs text-slate-500 space-y-1">
+                    {fourBlocker.pulse_block.summary.highlights.slice(0, 2).map((h, i) => (
+                      <li key={i} className="truncate">{h}</li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Milestones Block */}
+            <Card className={`glass-card border-l-4 ${
+              fourBlocker.milestones_block.summary?.status === 'CRITICAL' ? 'border-l-red-500' :
+              fourBlocker.milestones_block.summary?.status === 'ATTENTION' ? 'border-l-amber-500' :
+              fourBlocker.milestones_block.summary?.status === 'HEALTHY' ? 'border-l-emerald-500' : 'border-l-slate-300'
+            }`}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-5 h-5 text-sky-500" />
+                  <h3 className="font-heading font-semibold text-slate-900">Milestones</h3>
+                </div>
+                <div className="flex gap-4 mb-2 text-sm">
+                  <span className="text-emerald-600">{fourBlocker.milestones_block.completed} done</span>
+                  <span className="text-amber-600">{fourBlocker.milestones_block.at_risk} at risk</span>
+                  <span className="text-red-600">{fourBlocker.milestones_block.overdue} overdue</span>
+                </div>
+                <p className="text-sm text-slate-600">{fourBlocker.milestones_block.summary?.message}</p>
+                {fourBlocker.milestones_block.summary?.date_changes_note && (
+                  <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                    <History className="w-3 h-3" /> {fourBlocker.milestones_block.summary.date_changes_note}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Risks Block */}
+            <Card className={`glass-card border-l-4 ${
+              fourBlocker.risks_block.summary?.status === 'CRITICAL' ? 'border-l-red-500' :
+              fourBlocker.risks_block.summary?.status === 'ATTENTION' ? 'border-l-amber-500' :
+              fourBlocker.risks_block.summary?.status === 'HEALTHY' ? 'border-l-emerald-500' : 'border-l-slate-300'
+            }`}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  <h3 className="font-heading font-semibold text-slate-900">Risks</h3>
+                </div>
+                <div className="flex gap-4 mb-2 text-sm">
+                  <span className="text-slate-600">{fourBlocker.risks_block.open} open</span>
+                  <span className="text-red-600">{fourBlocker.risks_block.high_impact} high impact</span>
+                </div>
+                <p className="text-sm text-slate-600">{fourBlocker.risks_block.summary?.message}</p>
+                {fourBlocker.risks_block.summary?.action && (
+                  <p className="text-xs text-sky-600 mt-1">{fourBlocker.risks_block.summary.action}</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Issues Block */}
+            <Card className={`glass-card border-l-4 ${
+              fourBlocker.issues_block.summary?.status === 'CRITICAL' ? 'border-l-red-500' :
+              fourBlocker.issues_block.summary?.status === 'ATTENTION' ? 'border-l-amber-500' :
+              fourBlocker.issues_block.summary?.status === 'HEALTHY' ? 'border-l-emerald-500' : 'border-l-slate-300'
+            }`}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-5 h-5 text-red-500" />
+                  <h3 className="font-heading font-semibold text-slate-900">Issues</h3>
+                </div>
+                <div className="flex gap-4 mb-2 text-sm">
+                  <span className="text-slate-600">{fourBlocker.issues_block.open} open</span>
+                  <span className="text-red-600">{fourBlocker.issues_block.critical} critical</span>
+                  <span className="text-amber-600">{fourBlocker.issues_block.high} high</span>
+                </div>
+                <p className="text-sm text-slate-600">{fourBlocker.issues_block.summary?.message}</p>
+                {fourBlocker.issues_block.summary?.action && (
+                  <p className="text-xs text-sky-600 mt-1">{fourBlocker.issues_block.summary.action}</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* This Week's Pulse */}
         <Card className="mb-6 glass-card" data-testid="current-pulse-card">
           <CardHeader className="border-b border-slate-50">
@@ -424,7 +551,24 @@ export default function ConsultantDashboard() {
                           <Target className={`w-5 h-5 ${ms.status === 'DONE' ? 'text-emerald-500' : ms.status === 'AT_RISK' ? 'text-amber-500' : 'text-slate-400'}`} />
                           <div>
                             <p className="font-medium text-slate-900">{ms.title}</p>
-                            <p className="text-sm text-slate-500">Due: {format(parseISO(ms.due_date), 'MMM d, yyyy')}</p>
+                            <div className="flex items-center gap-2 text-sm text-slate-500">
+                              <span>Due: {format(parseISO(ms.due_date), 'MMM d, yyyy')}</span>
+                              {ms.original_due_date && ms.original_due_date !== ms.due_date && (
+                                <span className="text-xs text-amber-600 flex items-center gap-1">
+                                  <Lock className="w-3 h-3" />
+                                  Original: {format(parseISO(ms.original_due_date), 'MMM d')}
+                                </span>
+                              )}
+                              {ms.date_change_history?.length > 0 && (
+                                <button 
+                                  onClick={() => setDateHistoryDialog({ open: true, milestone: ms })}
+                                  className="text-xs text-sky-600 hover:text-sky-700 flex items-center gap-1"
+                                >
+                                  <History className="w-3 h-3" />
+                                  {ms.date_change_history.length} change(s)
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -435,6 +579,16 @@ export default function ConsultantDashboard() {
                             ></div>
                           </div>
                           <span className="text-sm font-medium text-slate-600 w-10">{ms.completion_percent}%</span>
+                          {ms.original_due_date && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => setDateChangeDialog({ open: true, milestone: ms })}
+                              title="Change Due Date"
+                            >
+                              <Calendar className="w-4 h-4 text-amber-500" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" onClick={() => setMilestoneDialog({ open: true, data: ms })}>
                             <Edit2 className="w-4 h-4" />
                           </Button>
@@ -669,6 +823,21 @@ export default function ConsultantDashboard() {
         data={contactDialog.data} 
         onClose={() => setContactDialog({ open: false, data: null })}
         onSave={handleSaveContact}
+      />
+
+      {/* Date Change Dialog */}
+      <DateChangeDialog
+        open={dateChangeDialog.open}
+        milestone={dateChangeDialog.milestone}
+        onClose={() => setDateChangeDialog({ open: false, milestone: null })}
+        onSave={handleChangeMilestoneDate}
+      />
+
+      {/* Date History Dialog */}
+      <DateHistoryDialog
+        open={dateHistoryDialog.open}
+        milestone={dateHistoryDialog.milestone}
+        onClose={() => setDateHistoryDialog({ open: false, milestone: null })}
       />
     </div>
   );
@@ -963,9 +1132,8 @@ function ContactDialog({ open, data, onClose, onSave }) {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="CLIENT">Client</SelectItem>
-                <SelectItem value="STAKEHOLDER">Stakeholder</SelectItem>
-                <SelectItem value="VENDOR">Vendor</SelectItem>
                 <SelectItem value="INTERNAL">Internal</SelectItem>
+                <SelectItem value="VENDOR">Vendor</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -982,6 +1150,118 @@ function ContactDialog({ open, data, onClose, onSave }) {
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={() => onSave({ ...form, contact_id: data?.contact_id })}>Save</Button>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Date Change Dialog Component
+function DateChangeDialog({ open, milestone, onClose, onSave }) {
+  const [newDate, setNewDate] = useState('');
+  const [reason, setReason] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setNewDate(milestone?.due_date?.split('T')[0] || '');
+      setReason('');
+    }
+  }, [open, milestone]);
+
+  const handleSubmit = () => {
+    if (!newDate || !reason.trim()) return;
+    onSave(milestone.milestone_id, new Date(newDate).toISOString(), reason);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Change Due Date</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="p-3 bg-slate-50 rounded-lg">
+            <p className="text-sm font-medium text-slate-900">{milestone?.title}</p>
+            <p className="text-xs text-slate-500 mt-1">
+              Current date: {milestone?.due_date ? format(parseISO(milestone.due_date), 'MMM d, yyyy') : 'N/A'}
+            </p>
+            {milestone?.original_due_date && (
+              <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                <Lock className="w-3 h-3" />
+                Original: {format(parseISO(milestone.original_due_date), 'MMM d, yyyy')}
+              </p>
+            )}
+          </div>
+          <div>
+            <Label>New Due Date *</Label>
+            <Input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} data-testid="date-change-input" />
+          </div>
+          <div>
+            <Label>Reason for Change *</Label>
+            <Textarea 
+              value={reason} 
+              onChange={e => setReason(e.target.value)} 
+              placeholder="Explain why the date needs to change..."
+              data-testid="date-change-reason"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={!newDate || !reason.trim()} data-testid="date-change-submit">
+            Update Date
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Date History Dialog Component
+function DateHistoryDialog({ open, milestone, onClose }) {
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <History className="w-5 h-5 text-sky-500" />
+            Date Change History
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="p-3 bg-slate-50 rounded-lg">
+            <p className="text-sm font-medium text-slate-900">{milestone?.title}</p>
+            {milestone?.original_due_date && (
+              <p className="text-xs text-slate-500 mt-1">
+                Original date: {format(parseISO(milestone.original_due_date), 'MMM d, yyyy')}
+              </p>
+            )}
+            <p className="text-xs text-slate-500 mt-1">
+              Current date: {milestone?.due_date ? format(parseISO(milestone.due_date), 'MMM d, yyyy') : 'N/A'}
+            </p>
+          </div>
+          {milestone?.date_change_history?.length > 0 ? (
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
+              {milestone.date_change_history.map((change, i) => (
+                <div key={i} className="p-3 border border-slate-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-slate-900">{change.changed_by_name}</span>
+                    <span className="text-xs text-slate-500">
+                      {format(parseISO(change.changed_at), 'MMM d, yyyy h:mm a')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-slate-600 mb-1">
+                    <span>{format(parseISO(change.previous_date), 'MMM d, yyyy')}</span>
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                    <span className="font-medium">{format(parseISO(change.new_date), 'MMM d, yyyy')}</span>
+                  </div>
+                  <p className="text-sm text-slate-500 italic">"{change.reason}"</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500 text-center py-4">No date changes recorded</p>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

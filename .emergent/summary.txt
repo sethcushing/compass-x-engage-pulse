@@ -1,186 +1,216 @@
 <analysis>**original_problem_statement:**
-Build an internal web app called “Engagement Pulse” for a consulting firm. The app should allow consultants to submit weekly status updates for their engagements. Leadership (Leads/Admins) should be able to view engagement health across all clients, drill down into details like risks, issues, and milestones, and track the RAG (Red, Amber, Green) status over time.
+Build an internal web app called “Engagement Pulse” for a consulting firm. Consultants submit weekly status updates, and leadership tracks engagement health (RAG status), risks, issues, and milestones. The application should derive a  for each engagement.
 
 PRODUCT REQUIREMENTS:
--   **Data Models**: Users, Clients, Engagements, WeeklyPulses, Milestones, Risks, Issues, Contacts, ActivityLog.
--   **Roles**:  (can only see/update their own engagement) and / (can see everything and manage master data).
--   **Core Logic**: A  (0-100) should be derived for each engagement based on RAG status, open issues/risks, and pulse submission compliance.
--   **Consultant View**: A My Engagement page to submit the weekly pulse and view engagement details (milestones, risks, issues) in a read-only capacity.
--   **Lead/Admin View**: A Portfolio Dashboard with filters and widgets for RAG overview, at-risk engagements, missing pulses, etc. It should also have a detailed drill-down page for each engagement with tabs for overview, pulses, milestones, risks, issues, and contacts (all with CRUD capabilities for admins).
--   **Admin Setup**: A page to seed and manage core data like Clients, Engagements, and Users.
--   **User Preferences**: Use Google OAuth for authentication. The UI should have a light, ocean-style theme, similar to a previous activity-driven-crm app. Seed the database with a provided list of real consultant and client names.
+-   **Views**: A My Engagement page for consultants and a Portfolio Dashboard for leads/admins.
+-   **Authentication**: Initially Google OAuth, but later pivoted to a custom JWT (email/password) system.
+-   **Data Management**: Admins can manage master data (Clients, Engagements, Users). Consultants can perform CRUD operations on their own engagement's milestones, risks, issues, and contacts.
+-   **UI**: A modern, glassmorphic design with a beachy/ocean theme.
+-   **Deployment**: Must be deployable to Koyeb via a .
+-   **Key Features**:
+    -   Restrict login to a pre-defined list of users seeded in the database.
+    -   An AI-powered 4-blocker overview on the dashboard summarizing the status of pulses, milestones, risks, and issues.
+    -   Track changes to milestone due dates, locking the original date and recording a history of changes with reasons.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack application with a FastAPI backend and React frontend.
--   **Backend**: All data models (Users, Clients, Engagements, etc.) are defined. API endpoints for CRUD operations on most models exist. Google OAuth is integrated for authentication. Role-based access control is partially implemented on the backend.
--   **Frontend**: A / portfolio dashboard is built, displaying engagements, clients, and users with filter capabilities. It includes a navigation sidebar and buttons for adding new clients, engagements, and consultants. Edit/delete functionality is present on the admin pages. An  page is available for managing master data.
--   **Data**: The database is extensively seeded with user-provided consultant and client names, along with sample pulses, milestones, risks, and issues. The user  has been granted  privileges.
+A full-stack application with a FastAPI backend and React frontend using JWT for authentication.
+-   **Backend**: Features JWT token generation, password hashing, and role-based access. It automatically seeds a list of pre-defined users into the database on startup. Endpoints exist for most CRUD operations, including new logic for the AI summary and milestone date changes.
+-   **Frontend**: A redesigned glassmorphic login page. The  has been significantly updated to support full CRUD for milestones, risks, issues, and contacts, and includes the UI structure for the new AI-powered 4-blocker overview and milestone date change history.
+-   **Deployment**: , , and  files have been created to facilitate deployment on the Koyeb platform. The deployment process has been extensively debugged, addressing issues with dependencies and environment configuration.
 
 **Last working item**:
--   **Last item agent was working**: Adding the ability for admins to change an engagement's  and , and to mark an engagement as complete by setting a . This involved modifying the  model and creating a new API endpoint on the backend, and updating the  on the frontend.
+-   **Last item agent was working**: Implementing two major features requested by the user:
+    1.  An AI-powered 4-blocker overview on the consultant dashboard.
+    2.  A system to track changes to milestone due dates, locking the original date and logging the reason for any modifications.
+    This involved significant changes to the backend  (new models, new API endpoints for AI summary and date changes) and the frontend  (new UI sections, data fetching, and state management logic).
 -   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
 -   **Which testing method agent to use?**: both
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1**: Complete implementation for changing engagement dates and marking engagements complete. (Priority: P0)
--   **Issue 2**: User-reported bug editing engagement is not working may not be fully resolved. (Priority: P1)
--   **Issue 3**: Automated testing of authenticated routes using the  tool is unreliable due to session/cookie issues. (Priority: P2)
+-   Issue 1: Complete and test the 4-blocker overview and milestone date tracking features. (Priority: P0)
+-   Issue 2: Recurring MongoDB connection failures on Koyeb deployment. (Priority: P0 - Blocker)
+-   Issue 3: Verify fix for bug where users could not save Risks. (Priority: P1)
 
 **Issues Detail:**
 -   **Issue 1**:
-    -   **Attempted fixes**: The agent added  and  to the engagement update (PUT) endpoint and created a new POST endpoint . The backend  model was updated to include an optional . Frontend work was started in  to add UI elements for these actions.
+    -   **Attempted fixes**: The agent wrote the backend logic in  and the frontend UI/logic in .
     -   **Next debug checklist**:
-        1.  Verify the backend changes in  for the  Pydantic model and the associated endpoints.
-        2.  Complete the frontend changes in . Ensure the  form correctly handles the date inputs and that the Complete Engagement button in the dropdown menu correctly calls the new  function.
-        3.  Ensure all necessary icons (e.g.,  from ) are imported correctly.
-        4.  Perform end-to-end testing: edit dates on an engagement and complete a different engagement, verifying the changes are persisted and reflected in the UI.
-    -   **Why fix this issue and what will be achieved with the fix?**: Fulfills the user's request to manage the full lifecycle of an engagement.
+        1.  Review the AI summary endpoint () in . It uses usage: openai [-h] [-v] [-b API_BASE] [-k API_KEY] [-p PROXY [PROXY ...]]
+              [-o ORGANIZATION] [-t {openai,azure}]
+              [--api-version API_VERSION] [--azure-endpoint AZURE_ENDPOINT]
+              [--azure-ad-token AZURE_AD_TOKEN] [-V]
+              {api,tools,migrate,grit} ...
+
+positional arguments:
+  {api,tools,migrate,grit}
+    api                 Direct API calls
+    tools               Client side tools for convenience
+
+options:
+  -h, --help            show this help message and exit
+  -v, --verbose         Set verbosity.
+  -b API_BASE, --api-base API_BASE
+                        What API base url to use.
+  -k API_KEY, --api-key API_KEY
+                        What API key to use.
+  -p PROXY [PROXY ...], --proxy PROXY [PROXY ...]
+                        What proxy to use.
+  -o ORGANIZATION, --organization ORGANIZATION
+                        Which organization to run as (will use your default
+                        organization if not specified)
+  -t {openai,azure}, --api-type {openai,azure}
+                        The backend API to call, must be `openai` or `azure`
+  --api-version API_VERSION
+                        The Azure API version, e.g.
+                        'https://learn.microsoft.com/en-us/azure/ai-
+                        services/openai/reference#rest-api-versioning'
+  --azure-endpoint AZURE_ENDPOINT
+                        The Azure endpoint, e.g.
+                        'https://endpoint.openai.azure.com'
+  --azure-ad-token AZURE_AD_TOKEN
+                        A token from Azure Active Directory,
+                        https://www.microsoft.com/en-
+                        us/security/business/identity-access/microsoft-entra-
+                        id
+  -V, --version         show program's version number and exit and will require an API key. Ensure it's configured to use the  from the environment.
+        2.  Test the milestone date change flow: create a milestone, change its date with a reason, and verify the  is correctly recorded and displayed.
+        3.  Test the 4-blocker overview UI to ensure it correctly fetches and renders the AI-generated summary.
+    -   **Why fix this issue and what will be achieved with the fix?**: Fulfills core user requirements for advanced project tracking and oversight.
     -   **Status**: IN PROGRESS
     -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?**: both
 -   **Issue 2**:
-    -   **Attempted fixes**: The agent rewrote parts of the  inside  to address the issue. However, testing was inconclusive.
+    -   **Attempted fixes**: The agent repeatedly guided the user on setting the MongoDB IP whitelist (), correcting the  format, and resetting the database user password in Atlas. The latest password requested by the user is .
     -   **Next debug checklist**:
-        1.  Using a valid admin session, navigate to the portfolio dashboard.
-        2.  Click the Edit button for an existing engagement.
-        3.  Modify a field (e.g., RAG Reason) and click Save.
-        4.  Verify that the data is updated correctly in the UI and via an API check if necessary.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is a core CRUD functionality that must work for admins.
-    -   **Status**: USER VERIFICATION PENDING
+        1.  Confirm the database user  in MongoDB Atlas has the password .
+        2.  Confirm the Koyeb environment variable  is set correctly to .
+        3.  Confirm the  is .
+        4.  Redeploy on Koyeb and check the  endpoint and runtime logs for connection errors.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical blocker preventing the application from being used in the deployed environment.
+    -   **Status**: BLOCKED
     -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?**: frontend
+    -   **Should Test frontend/backend/both after fix?**: backend
 -   **Issue 3**:
-    -   **Attempted fixes**: The agent tried various methods to inject session cookies for the screenshot tool, including creating new sessions and simulating OAuth callbacks, but none were reliable.
-    -   **Next debug checklist**: For testing authenticated frontend routes, the next agent should prioritize using the  as it handles login flows more robustly. Avoid using the basic  tool with manual cookie injection for protected routes.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is a process improvement to ensure reliable testing and avoid wasting time on debugging the testing tool itself.
-    -   **Status**: NOT STARTED
-    -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?**: NA
+    -   **Attempted fixes**: Agent identified that the frontend was sending incorrect enum values for  and  when saving a risk. A fix was applied in .
+    -   **Next debug checklist**:
+        1.  Log in as a consultant.
+        2.  Navigate to the Risks tab and create a new risk, selecting various categories and statuses.
+        3.  Verify the risk is saved successfully without errors.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is a core CRUD functionality for consultants that was reported as broken.
+    -   **Status**: TESTING PENDING
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?**: frontend
 
 **In progress Task List**:
--   **Task 1**: Implement editing of engagement dates and a Complete Engagement feature.
-    -   **Where to resume**: The agent was applying a series of  commands to . The next step is to verify all changes have been applied correctly, check for syntax errors, and then proceed with testing the feature end-to-end.
-    -   **What will be achieved with this?**: Admins will be able to modify the start/end dates of an engagement and officially mark it as complete.
+-   **Task 1**: AI-powered 4-blocker overview.
+    -   **Where to resume**: Code is present in  and . It needs to be tested and validated. The OpenAI API key integration needs to be finalized.
+    -   **What will be achieved with this?**: Users will get a high-level, AI-generated summary of engagement health.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: both
+    -   **Blocked on something**: Requires a valid LLM API key () to be configured in the deployment environment.
+-   **Task 2**: Milestone date change tracking.
+    -   **Where to resume**: Code is present in  and . Needs end-to-end testing.
+    -   **What will be achieved with this?**: Provides a clear audit trail for any changes to milestone deadlines.
     -   **Status**: IN PROGRESS
     -   **Should Test frontend/backend/both after fix?**: both
     -   **Blocked on something**: No.
 
 **Upcoming and Future Tasks**
--   **Upcoming Tasks**:
-    -   **P0**: Build out the  role's My Engagement page () to show their specific engagement data and a prompt to submit their weekly pulse.
-    -   **P1**: Fully implement the  form (), including Save Draft and Submit functionality, and the logic to lock submissions after the end of the week.
--   **Future Tasks**:
-    -   **P1**: Implement the full Engagement Detail page () with its tabbed layout for Overview, Pulses, Milestones, Risks, Issues, and Contacts. This includes the RAG Trend visualization.
-    -   **P2**: Implement helpful behaviors like the Pulse due by Friday notification banner and quick actions like Mark Issue Resolved.
-    -   **P2**: Conduct a full audit of frontend components to ensure role-based permissions (e.g., read-only views for consultants) are correctly enforced.
+-   **P1**: Fully implement the Engagement Detail page () with its tabbed layout and a RAG Trend visualization.
+-   **P2**: Conduct a full audit of role-based permissions to ensure they align with the product requirements (e.g., consultants should only see/edit their own data).
+-   **P2**: Stabilize the Koyeb deployment process to prevent recurring database connection issues.
 
 **Completed work in this session**
--   Initial project setup (FastAPI backend, React frontend).
--   Implemented all required data models in .
--   Integrated Google OAuth for user authentication.
--   Built the / portfolio dashboard with a navigation sidebar, filtering, and quick-add buttons ().
--   Implemented edit/delete functionality on the  page.
--   Populated the database with extensive, user-specified seed data for all models.
--   Assigned  role to  as requested.
+-   **Authentication**: Migrated the entire application from Google OAuth to a custom JWT (email/password) system.
+-   **UI/UX**: Completely redesigned the login page to have a modern, glassmorphic aesthetic with a custom background image and updated controls.
+-   **Deployment**: Created and debugged a  and  for production deployment, solving issues with dependencies (, private pip packages) and Node.js versions.
+-   **Bug Fixes**:
+    -   Resolved a critical frontend bug where  headers were being overwritten in API calls, breaking all POST/PUT requests.
+    -   Addressed a bug preventing users from saving risks by correcting the enum values sent from the frontend.
+-   **Features**:
+    -   Implemented auto-seeding of users on backend startup.
+    -   Granted consultants full CRUD capabilities for milestones, risks, issues, and contacts from their dashboard.
+-   **Backend**: Added a  endpoint for easier debugging of database connectivity.
 
 **Earlier issues found/mentioned but not fixed**
--   The user's report that editing engagement is not working was addressed, but the fix has not been verified due to testing limitations. This is tracked as  in the pending list.
-
-**Known issue recurrence from previous fork**
--   None.
+-   An issue from the initial handoff, editing engagement is not working, has not been explicitly re-tested or verified as fixed after the numerous changes.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Backend**: FastAPI
--   **Frontend**: React
--   **Database**: MongoDB
--   **Authentication**: Google OAuth with JWT sessions
--   **Styling**: Tailwind CSS with Shadcn UI components
--   **Architecture**: RESTful API, Single Page Application (SPA)
+-   **Authentication**: JWT (JSON Web Tokens) using  on the backend and  on the frontend.
+-   **Deployment**: Multi-stage Docker builds deployed to the Koyeb serverless platform.
+-   **AI Integration**: An endpoint was created to call an OpenAI model via the  library for generating text summaries.
 
 **key DB schema**
--   **Users**: {name, email, role, is_active}
--   **Clients**: {client_name, industry, notes, primary_contact_*}
--   **Engagements**: {client_id, engagement_name, consultant_user_id, start_date, target_end_date, rag_status, is_active, completed_date}
--   **WeeklyPulses**: {engagement_id, week_start_date, rag_status_this_week, what_went_well, ...}
--   **Milestones**: {engagement_id, title, due_date, status}
--   **Risks**: {engagement_id, title, probability, impact, status}
--   **Issues**: {engagement_id, title, severity, status}
--   **Contacts**: {engagement_id, name, type}
-
-**changes in tech stack**
--   None.
+-   **Users**: 
+-   **Milestones**: 
+-   **MilestoneDateChange**: 
 
 **All files of reference**
--   : Contains all FastAPI routes, data models, and business logic.
--   : The main dashboard for Admins/Leads. Contains logic for displaying engagements, filtering, and dialogs for creating/editing entities.
--   : UI for managing clients, engagements, and users.
--   : Main React component containing the router and route definitions.
--   : Handles authentication checks for protected routes.
--   : Handles the redirect from Google OAuth to create a user session.
--   : The product requirements document created by the agent.
+-   : The core backend file, heavily modified for JWT auth, AI summaries, and milestone tracking.
+-   : The main page for consultants, heavily modified for new CRUD features and UI overhauls.
+-   : Rewritten for JWT login and the new glassmorphic UI.
+-   : Defines the production build process for deployment.
+-   : Configuration for deploying the application on Koyeb.
+-   : Contains secrets; the  is critical and has been a frequent source of issues.
 
 **Areas that need refactoring**:
--   The  file is becoming very large. The dialog components (, , ) could be extracted into their own separate files within a  directory to improve modularity and readability.
+-   The  file has become a monolith containing UI and logic for the main view plus multiple complex dialogs (Milestone, Risk, Issue, Contact). These dialogs should be extracted into their own components to improve maintainability.
+-   The AI summary logic in  is basic. It should be enhanced to securely read the API key from environment variables and include more robust error handling.
 
 **key api endpoints**
--   , , 
--   
--   , 
--   , 
--   , 
--    (Newly added)
--   
--   Endpoints for Milestones, Risks, Issues, Contacts, and Pulses.
+-   : (NEW) Exchanges email/password for a JWT.
+-   : (NEW) Updates a milestone's due date and records the change.
+-   : (NEW) Generates an AI summary for an engagement.
+-   : (NEW) A debug endpoint to check database connectivity.
 
 **Critical Info for New Agent**
--   **Testing**: Be aware that using the  tool for authenticated pages is unreliable. For any UI changes on protected routes, prefer using the  which can handle the full login flow.
--   **User Focus**: The user is detail-oriented and has provided specific data (consultant/client names) that must be used. Pay close attention to their requests for specific CRUD functionalities.
--   **Component Structure**: The  component is monolithic. Consider refactoring dialogs into separate components if you make significant changes to it.
+-   **Deployment is the Main Blocker**: The user's primary frustration is the inability to get the application working on Koyeb due to recurring MongoDB authentication issues. Solving this should be the top priority. The latest password should be .
+-   **AI Feature Requires API Key**: The new AI summary feature will fail silently or crash without a valid API key. You must ensure the  is added as a secret to the Koyeb environment and used by the backend.
+-   **Test Extensively**: A massive number of features and a full authentication system migration were done with almost no testing. A thorough regression and feature testing phase is mandatory before proceeding.
 
 **documents and test reports created in this job**
--   
--   
--   
--   
+-   None in this session.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **Request**: Ability to change engagement dates and complete an engagement. (IN PROGRESS)
-2.  **Request**: Seed the app with data for pulses, milestones, risks, contacts, and issues. (DONE)
-3.  **Request**: Ability to edit and delete clients, engagements, and consultants. (DONE)
-4.  **Request**: Use a specific list of real consultant and client names for seeding data. (DONE)
-5.  **Request**: Ability to add new clients, engagements, and consultants from the dashboard, plus a navigation menu. Also, reported that editing an engagement is not working. (DONE, but edit functionality needs verification)
-6.  **Request**: Make user  an admin. (DONE)
-7.  **Initial Choices**: Confirmed use of Google OAuth, a specific theme, and the need for seed data. (DONE)
-8.  **Internal Messages**: The other messages were agent-internal or confirming actions.
+1.  **Request**: Change dashboard to a 4-blocker style with AI summary & track milestone date changes with reasons. (IN PROGRESS)
+2.  **Request**: Make the login screen design more glassmorphic and modern. (DONE)
+3.  **Request**: Change password to . (ATTEMPTED - requires user action on Koyeb)
+4.  **Issue**: Login not working. (BLOCKED by DB connection)
+5.  **Request**: Change login screen background to a beachy wave vibe. (DONE)
+6.  **Issue**: Team is having issues saving risks. (FIXED - needs verification)
+7.  **Request**: Change login button to white. (DONE)
+8.  **Issue**: Login is not working and tab title is not updated. (BLOCKED by DB connection and user needs to push to GitHub)
+9.  **Request**: Change tab title and remove Made with Emergent badge. (DONE - pending user push)
+10. **Request**: Remove Sign in button from top of landing page. (DONE - pending user push)
 
 **Project Health Check:**
 -   **Broken**:
-    -   The feature to edit engagement dates and complete an engagement is partially implemented and not functional.
-    -   The core edit engagement functionality is unverified and potentially broken.
+    -   The entire Koyeb deployment is non-functional due to persistent MongoDB authentication failures.
+    -   The new AI Summary and Milestone Tracking features are coded but completely untested and likely non-functional without API key configuration.
 -   **Mocked**:
-    -   None. All data is seeded into the actual database.
+    -   The AI summary feature is effectively mocked, as it will fail without a valid .
 
 **3rd Party Integrations**
--   Emergent-managed Google Auth — uses User LLM Key (for the OAuth flow setup, not runtime).
+-   **JWT (PyJWT & frontend manual handling)**: Used for custom authentication.
+-   **OpenAI GPT**: Used for the AI summary feature via . Requires the  to be set in the environment.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES, it was used once early on and found a loading issue.
+-   **Testing agent used after significant changes**: NO
 -   **Troubleshoot agent used after agent stuck in loop**: NO
 -   **Test files created**: None.
--   **Known regressions**: None identified, but the edit engagement bug was reported after initial implementation.
+-   **Known regressions**: The entire application's data creation/editing functionality was broken due to a header bug, which was fixed but needs comprehensive testing. Login functionality is intermittently broken on deployment.
 
 **Credentials to test flow:**
-An admin user  with password  was used for testing. This user has the  role. The user  is also an admin and can be used for testing via the Google OAuth flow.
+-   **Admin User**:  /  (This was the last working password in the local agent environment).
+-   **User's Requested Password**:  (The user wants this to be the new password, but it has not been successfully configured and tested on Koyeb yet).
 
 **What agent forgot to execute**
--   The dedicated  view (My Engagement page) as specified in the PRD has not been implemented.
--   The core feature for a consultant to submit a weekly pulse is not complete.
--   The RAG Trend visualization for the engagement detail page is missing.
--   Helpful Behaviors like notification banners have not been implemented.</analysis>
+-   The agent implemented an AI-powered feature () without adding the necessary  to the environment configuration (, ). This guarantees the feature will fail on deployment.
+-   The agent did not perform any significant testing after the massive migration from Google OAuth to JWT, which touched nearly every data-fetching component in the frontend.</analysis>
