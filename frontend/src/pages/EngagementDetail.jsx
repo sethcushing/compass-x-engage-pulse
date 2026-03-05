@@ -33,6 +33,8 @@ export default function EngagementDetail() {
   const [contacts, setContacts] = useState([]);
   const [ragTrend, setRagTrend] = useState([]);
   const [fourBlocker, setFourBlocker] = useState(null);
+  const [meetings, setMeetings] = useState([]);
+  const [actionItems, setActionItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -43,6 +45,8 @@ export default function EngagementDetail() {
   const [riskDialog, setRiskDialog] = useState({ open: false, data: null });
   const [issueDialog, setIssueDialog] = useState({ open: false, data: null });
   const [contactDialog, setContactDialog] = useState({ open: false, data: null });
+  const [meetingDialog, setMeetingDialog] = useState({ open: false, data: null });
+  const [actionItemDialog, setActionItemDialog] = useState({ open: false, data: null });
 
   useEffect(() => {
     fetchData();
@@ -64,14 +68,16 @@ export default function EngagementDetail() {
       setEngagement(await engRes.json());
 
       // Fetch related data
-      const [pulsesRes, msRes, risksRes, issuesRes, contactsRes, trendRes, fourBlockerRes] = await Promise.all([
+      const [pulsesRes, msRes, risksRes, issuesRes, contactsRes, trendRes, fourBlockerRes, meetingsRes, actionItemsRes] = await Promise.all([
         fetch(`${API_URL}/api/pulses?engagement_id=${engagementId}`, { headers: getAuthHeader() }),
         fetch(`${API_URL}/api/milestones?engagement_id=${engagementId}`, { headers: getAuthHeader() }),
         fetch(`${API_URL}/api/risks?engagement_id=${engagementId}`, { headers: getAuthHeader() }),
         fetch(`${API_URL}/api/issues?engagement_id=${engagementId}`, { headers: getAuthHeader() }),
         fetch(`${API_URL}/api/contacts?engagement_id=${engagementId}`, { headers: getAuthHeader() }),
         fetch(`${API_URL}/api/dashboard/rag-trend/${engagementId}`, { headers: getAuthHeader() }),
-        fetch(`${API_URL}/api/engagements/${engagementId}/four-blocker`, { headers: getAuthHeader() })
+        fetch(`${API_URL}/api/engagements/${engagementId}/four-blocker`, { headers: getAuthHeader() }),
+        fetch(`${API_URL}/api/meetings?engagement_id=${engagementId}`, { headers: getAuthHeader() }),
+        fetch(`${API_URL}/api/action-items?engagement_id=${engagementId}`, { headers: getAuthHeader() })
       ]);
 
       if (pulsesRes.ok) setPulses(await pulsesRes.json());
@@ -81,6 +87,8 @@ export default function EngagementDetail() {
       if (contactsRes.ok) setContacts(await contactsRes.json());
       if (trendRes.ok) setRagTrend(await trendRes.json());
       if (fourBlockerRes.ok) setFourBlocker(await fourBlockerRes.json());
+      if (meetingsRes.ok) setMeetings(await meetingsRes.json());
+      if (actionItemsRes.ok) setActionItems(await actionItemsRes.json());
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -278,6 +286,83 @@ export default function EngagementDetail() {
     }
   };
 
+  const handleSaveMeeting = async (data) => {
+    try {
+      const url = data.meeting_id 
+        ? `${API_URL}/api/meetings/${data.meeting_id}`
+        : `${API_URL}/api/meetings`;
+      const res = await fetch(url, {
+        method: data.meeting_id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify({ ...data, engagement_id: engagementId })
+      });
+      if (!res.ok) throw new Error('Failed to save meeting');
+      toast.success(data.meeting_id ? 'Meeting updated' : 'Meeting created');
+      setMeetingDialog({ open: false, data: null });
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleDeleteMeeting = async (id) => {
+    if (!window.confirm('Delete this meeting and its action items?')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/meetings/${id}`, { method: 'DELETE', headers: getAuthHeader() });
+      if (!res.ok) throw new Error('Failed to delete');
+      toast.success('Meeting deleted');
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleCompleteMeeting = async (meeting) => {
+    try {
+      await fetch(`${API_URL}/api/meetings/${meeting.meeting_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify({ status: 'COMPLETED' })
+      });
+      toast.success('Meeting marked complete. Add action items now!');
+      setActionItemDialog({ open: true, data: { meeting_id: meeting.meeting_id } });
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleSaveActionItem = async (data) => {
+    try {
+      const url = data.action_item_id 
+        ? `${API_URL}/api/action-items/${data.action_item_id}`
+        : `${API_URL}/api/action-items`;
+      const res = await fetch(url, {
+        method: data.action_item_id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify({ ...data, engagement_id: engagementId })
+      });
+      if (!res.ok) throw new Error('Failed to save action item');
+      toast.success(data.action_item_id ? 'Action item updated' : 'Action item created');
+      setActionItemDialog({ open: false, data: null });
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleDeleteActionItem = async (id) => {
+    if (!window.confirm('Delete this action item?')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/action-items/${id}`, { method: 'DELETE', headers: getAuthHeader() });
+      if (!res.ok) throw new Error('Failed to delete');
+      toast.success('Action item deleted');
+      fetchData();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen app-background flex items-center justify-center">
@@ -368,6 +453,8 @@ export default function EngagementDetail() {
             <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
             <TabsTrigger value="pulses" data-testid="tab-pulses">Pulses ({pulses.length})</TabsTrigger>
             <TabsTrigger value="milestones" data-testid="tab-milestones">Milestones ({milestones.length})</TabsTrigger>
+            <TabsTrigger value="meetings" data-testid="tab-meetings">Meetings ({meetings.length})</TabsTrigger>
+            <TabsTrigger value="action-items" data-testid="tab-action-items">Actions ({actionItems.filter(a => a.status !== 'DONE').length})</TabsTrigger>
             <TabsTrigger value="risks" data-testid="tab-risks">Risks ({risks.length})</TabsTrigger>
             <TabsTrigger value="issues" data-testid="tab-issues">Issues ({issues.length})</TabsTrigger>
             <TabsTrigger value="contacts" data-testid="tab-contacts">Contacts ({contacts.length})</TabsTrigger>
@@ -509,6 +596,25 @@ export default function EngagementDetail() {
                           <span className="text-amber-600">{fourBlocker.issues_block.high} high</span>
                         </div>
                         <p className="text-sm text-slate-600">{fourBlocker.issues_block.summary?.message}</p>
+                      </div>
+
+                      {/* Meetings & Actions Block */}
+                      <div className={`p-4 rounded-xl border-l-4 bg-slate-50 md:col-span-2 ${
+                        fourBlocker.meetings_block?.summary?.status === 'CRITICAL' ? 'border-l-red-500' :
+                        fourBlocker.meetings_block?.summary?.status === 'ATTENTION' ? 'border-l-amber-500' :
+                        fourBlocker.meetings_block?.summary?.status === 'HEALTHY' ? 'border-l-emerald-500' : 'border-l-violet-300'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Users className="w-4 h-4 text-violet-500" />
+                          <h4 className="font-semibold text-slate-900 text-sm">Meetings & Actions</h4>
+                        </div>
+                        <div className="flex gap-4 mb-1 text-xs">
+                          <span className="text-slate-600">{fourBlocker.meetings_block?.upcoming || 0} upcoming meetings</span>
+                          <span className="text-emerald-600">{fourBlocker.meetings_block?.completed || 0} completed</span>
+                          <span className="text-slate-600">{fourBlocker.action_items_block?.open || 0} open action items</span>
+                          <span className="text-red-600">{fourBlocker.action_items_block?.overdue || 0} overdue</span>
+                        </div>
+                        <p className="text-sm text-slate-600">{fourBlocker.meetings_block?.summary?.message}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -673,6 +779,135 @@ export default function EngagementDetail() {
                 ) : (
                   <div className="text-center py-8 text-slate-500">
                     No milestones defined
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Meetings Tab */}
+          <TabsContent value="meetings">
+            <Card className="glass-card">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-lg font-heading">Meetings</CardTitle>
+                {canEdit && (
+                  <Button size="sm" onClick={() => setMeetingDialog({ open: true, data: null })} data-testid="add-meeting-btn">
+                    <Plus className="w-4 h-4 mr-2" /> Add Meeting
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {meetings.length > 0 ? (
+                  <div className="space-y-3">
+                    {meetings.map((m) => (
+                      <div key={m.meeting_id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg" data-testid={`meeting-${m.meeting_id}`}>
+                        <div className="flex items-center gap-3 flex-1">
+                          <Users className={`w-5 h-5 ${m.status === 'COMPLETED' ? 'text-emerald-500' : m.status === 'CANCELLED' ? 'text-slate-400' : 'text-violet-500'}`} />
+                          <div className="flex-1">
+                            <p className="font-medium text-slate-900 text-base">{m.title}</p>
+                            <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
+                              <span>{m.date}</span>
+                              {m.time && <span>{m.time}</span>}
+                              <Badge variant="outline" className="text-xs">{m.meeting_type.replace('_', ' ')}</Badge>
+                            </div>
+                            {m.attendees && <p className="text-sm text-slate-500 mt-1">Attendees: {m.attendees}</p>}
+                            {m.notes && <p className="text-sm text-slate-400 mt-1 italic">{m.notes}</p>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge className={m.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : m.status === 'CANCELLED' ? 'bg-slate-100 text-slate-600' : 'bg-violet-100 text-violet-700'}>
+                            {m.status}
+                          </Badge>
+                          {canEdit && (
+                            <div className="flex items-center gap-1">
+                              {m.status === 'SCHEDULED' && (
+                                <Button variant="ghost" size="sm" onClick={() => handleCompleteMeeting(m)} title="Mark Complete">
+                                  <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="sm" onClick={() => setMeetingDialog({ open: true, data: m })}>
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDeleteMeeting(m.meeting_id)}>
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-slate-500">
+                    <Users className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+                    <p className="text-base">No meetings logged yet</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Action Items Tab */}
+          <TabsContent value="action-items">
+            <Card className="glass-card">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-lg font-heading">Action Items</CardTitle>
+                {canEdit && (
+                  <Button size="sm" onClick={() => setActionItemDialog({ open: true, data: null })} data-testid="add-action-item-btn">
+                    <Plus className="w-4 h-4 mr-2" /> Add Action Item
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {actionItems.length > 0 ? (
+                  <div className="space-y-3">
+                    {actionItems.map((ai) => {
+                      const linkedMeeting = meetings.find(m => m.meeting_id === ai.meeting_id);
+                      return (
+                        <div key={ai.action_item_id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg" data-testid={`action-item-${ai.action_item_id}`}>
+                          <div className="flex items-center gap-3 flex-1">
+                            <CheckCircle className={`w-5 h-5 ${ai.status === 'DONE' ? 'text-emerald-500' : ai.status === 'IN_PROGRESS' ? 'text-sky-500' : 'text-slate-400'}`} />
+                            <div className="flex-1">
+                              <p className={`font-medium text-base ${ai.status === 'DONE' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{ai.description}</p>
+                              <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
+                                {ai.owner && <span>Owner: {ai.owner}</span>}
+                                {ai.due_date && <span>Due: {ai.due_date}</span>}
+                                {linkedMeeting && (
+                                  <span className="text-violet-600 text-xs flex items-center gap-1">
+                                    <Users className="w-3 h-3" /> {linkedMeeting.title}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Badge className={
+                              ai.priority === 'HIGH' ? 'bg-red-100 text-red-700' :
+                              ai.priority === 'MEDIUM' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'
+                            }>{ai.priority}</Badge>
+                            <Badge className={
+                              ai.status === 'DONE' ? 'bg-emerald-100 text-emerald-700' :
+                              ai.status === 'IN_PROGRESS' ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-600'
+                            }>{ai.status.replace('_', ' ')}</Badge>
+                            {canEdit && (
+                              <div className="flex items-center gap-1">
+                                <Button variant="ghost" size="sm" onClick={() => setActionItemDialog({ open: true, data: ai })}>
+                                  <Edit2 className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleDeleteActionItem(ai.action_item_id)}>
+                                  <Trash2 className="w-4 h-4 text-red-500" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-slate-500">
+                    <CheckCircle className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+                    <p className="text-base">No action items yet</p>
                   </div>
                 )}
               </CardContent>
@@ -917,6 +1152,19 @@ export default function EngagementDetail() {
           open={dateHistoryDialog.open}
           milestone={dateHistoryDialog.milestone}
           onClose={() => setDateHistoryDialog({ open: false, milestone: null })}
+        />
+        <MeetingDialog
+          open={meetingDialog.open}
+          data={meetingDialog.data}
+          onClose={() => setMeetingDialog({ open: false, data: null })}
+          onSave={handleSaveMeeting}
+        />
+        <ActionItemDialog
+          open={actionItemDialog.open}
+          data={actionItemDialog.data}
+          meetings={meetings}
+          onClose={() => setActionItemDialog({ open: false, data: null })}
+          onSave={handleSaveActionItem}
         />
       </main>
     </div>
@@ -1339,6 +1587,182 @@ function DateHistoryDialog({ open, milestone, onClose }) {
             <p className="text-sm text-slate-500 text-center py-4">No date changes recorded</p>
           )}
         </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+// Meeting Dialog
+function MeetingDialog({ open, data, onClose, onSave }) {
+  const [form, setForm] = useState({
+    title: '', meeting_type: 'OTHER', date: '', time: '', attendees: '', notes: '', status: 'SCHEDULED'
+  });
+
+  useEffect(() => {
+    if (data) {
+      setForm({
+        title: data.title || '', meeting_type: data.meeting_type || 'OTHER',
+        date: data.date || '', time: data.time || '',
+        attendees: data.attendees || '', notes: data.notes || '',
+        status: data.status || 'SCHEDULED'
+      });
+    } else {
+      setForm({ title: '', meeting_type: 'OTHER', date: '', time: '', attendees: '', notes: '', status: 'SCHEDULED' });
+    }
+  }, [data, open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{data?.meeting_id ? 'Edit Meeting' : 'Add Meeting'}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label>Title *</Label>
+            <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} data-testid="meeting-title-input" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Date *</Label>
+              <Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} data-testid="meeting-date-input" />
+            </div>
+            <div>
+              <Label>Time</Label>
+              <Input value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} placeholder="e.g., 10:00 AM" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Meeting Type</Label>
+              <Select value={form.meeting_type} onValueChange={v => setForm(f => ({ ...f, meeting_type: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CLIENT_CALL">Client Call</SelectItem>
+                  <SelectItem value="INTERNAL_SYNC">Internal Sync</SelectItem>
+                  <SelectItem value="STEERING_COMMITTEE">Steering Committee</SelectItem>
+                  <SelectItem value="WORKSHOP">Workshop</SelectItem>
+                  <SelectItem value="REVIEW">Review</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Status</Label>
+              <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <Label>Attendees</Label>
+            <Input value={form.attendees} onChange={e => setForm(f => ({ ...f, attendees: e.target.value }))} placeholder="e.g., John, Sarah, Client PM" />
+          </div>
+          <div>
+            <Label>Notes</Label>
+            <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Meeting notes or agenda..." />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => onSave({ ...form, meeting_id: data?.meeting_id })} disabled={!form.title || !form.date}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Action Item Dialog
+function ActionItemDialog({ open, data, meetings, onClose, onSave }) {
+  const [form, setForm] = useState({
+    description: '', owner: '', due_date: '', status: 'OPEN', priority: 'MEDIUM', meeting_id: ''
+  });
+
+  useEffect(() => {
+    if (data?.action_item_id) {
+      setForm({
+        description: data.description || '', owner: data.owner || '',
+        due_date: data.due_date || '', status: data.status || 'OPEN',
+        priority: data.priority || 'MEDIUM', meeting_id: data.meeting_id || ''
+      });
+    } else {
+      setForm({
+        description: '', owner: '', due_date: '', status: 'OPEN',
+        priority: 'MEDIUM', meeting_id: data?.meeting_id || ''
+      });
+    }
+  }, [data, open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{data?.action_item_id ? 'Edit Action Item' : 'Add Action Item'}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label>Description *</Label>
+            <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="What needs to be done?" data-testid="action-item-description-input" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Owner</Label>
+              <Input value={form.owner} onChange={e => setForm(f => ({ ...f, owner: e.target.value }))} placeholder="Responsible person" />
+            </div>
+            <div>
+              <Label>Due Date</Label>
+              <Input type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Priority</Label>
+              <Select value={form.priority} onValueChange={v => setForm(f => ({ ...f, priority: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="LOW">Low</SelectItem>
+                  <SelectItem value="MEDIUM">Medium</SelectItem>
+                  <SelectItem value="HIGH">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Status</Label>
+              <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="OPEN">Open</SelectItem>
+                  <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                  <SelectItem value="DONE">Done</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {meetings && meetings.length > 0 && (
+            <div>
+              <Label>Linked Meeting (optional)</Label>
+              <Select value={form.meeting_id || 'none'} onValueChange={v => setForm(f => ({ ...f, meeting_id: v === 'none' ? '' : v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No linked meeting</SelectItem>
+                  {meetings.map(m => (
+                    <SelectItem key={m.meeting_id} value={m.meeting_id}>{m.title} ({m.date})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => onSave({ ...form, action_item_id: data?.action_item_id })} disabled={!form.description}>Save</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

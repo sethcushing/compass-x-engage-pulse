@@ -113,6 +113,29 @@ class ContactType(str, Enum):
     INTERNAL = "INTERNAL"
     VENDOR = "VENDOR"
 
+class MeetingType(str, Enum):
+    CLIENT_CALL = "CLIENT_CALL"
+    INTERNAL_SYNC = "INTERNAL_SYNC"
+    STEERING_COMMITTEE = "STEERING_COMMITTEE"
+    WORKSHOP = "WORKSHOP"
+    REVIEW = "REVIEW"
+    OTHER = "OTHER"
+
+class MeetingStatus(str, Enum):
+    SCHEDULED = "SCHEDULED"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+class ActionItemStatus(str, Enum):
+    OPEN = "OPEN"
+    IN_PROGRESS = "IN_PROGRESS"
+    DONE = "DONE"
+
+class ActionItemPriority(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+
 class EntityType(str, Enum):
     PULSE = "PULSE"
     MILESTONE = "MILESTONE"
@@ -416,6 +439,73 @@ class ContactUpdate(BaseModel):
     phone: Optional[str] = None
     type: Optional[ContactType] = None
     notes: Optional[str] = None
+
+# ===================== MEETING MODELS =====================
+class Meeting(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    meeting_id: str = Field(default_factory=lambda: f"mtg_{uuid.uuid4().hex[:12]}")
+    engagement_id: str
+    title: str
+    meeting_type: MeetingType = MeetingType.OTHER
+    date: str
+    time: Optional[str] = None
+    attendees: Optional[str] = None
+    notes: Optional[str] = None
+    status: MeetingStatus = MeetingStatus.SCHEDULED
+    created_by: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class MeetingCreate(BaseModel):
+    engagement_id: str
+    title: str
+    meeting_type: MeetingType = MeetingType.OTHER
+    date: str
+    time: Optional[str] = None
+    attendees: Optional[str] = None
+    notes: Optional[str] = None
+    status: MeetingStatus = MeetingStatus.SCHEDULED
+
+class MeetingUpdate(BaseModel):
+    title: Optional[str] = None
+    meeting_type: Optional[MeetingType] = None
+    date: Optional[str] = None
+    time: Optional[str] = None
+    attendees: Optional[str] = None
+    notes: Optional[str] = None
+    status: Optional[MeetingStatus] = None
+
+# ===================== ACTION ITEM MODELS =====================
+class ActionItem(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    action_item_id: str = Field(default_factory=lambda: f"ai_{uuid.uuid4().hex[:12]}")
+    engagement_id: str
+    meeting_id: Optional[str] = None
+    description: str
+    owner: Optional[str] = None
+    due_date: Optional[str] = None
+    status: ActionItemStatus = ActionItemStatus.OPEN
+    priority: ActionItemPriority = ActionItemPriority.MEDIUM
+    created_by: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class ActionItemCreate(BaseModel):
+    engagement_id: str
+    meeting_id: Optional[str] = None
+    description: str
+    owner: Optional[str] = None
+    due_date: Optional[str] = None
+    status: ActionItemStatus = ActionItemStatus.OPEN
+    priority: ActionItemPriority = ActionItemPriority.MEDIUM
+
+class ActionItemUpdate(BaseModel):
+    description: Optional[str] = None
+    owner: Optional[str] = None
+    due_date: Optional[str] = None
+    status: Optional[ActionItemStatus] = None
+    priority: Optional[ActionItemPriority] = None
+    meeting_id: Optional[str] = None
 
 class ActivityLog(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -1489,6 +1579,139 @@ async def delete_contact(contact_id: str, request: Request):
     await db.contacts.delete_one({"contact_id": contact_id})
     return {"message": "Contact deleted"}
 
+# ===================== MEETING ENDPOINTS =====================
+@api_router.get("/meetings")
+async def get_meetings(request: Request, engagement_id: Optional[str] = None):
+    """Get meetings, optionally filtered by engagement"""
+    user = await require_auth(request)
+    query = {}
+    if engagement_id:
+        query["engagement_id"] = engagement_id
+    meetings = await db.meetings.find(query, {"_id": 0}).sort("date", -1).to_list(200)
+    return [deserialize_doc(m) for m in meetings]
+
+@api_router.post("/meetings")
+async def create_meeting(meeting_data: MeetingCreate, request: Request):
+    """Create a new meeting"""
+    user = await require_auth(request)
+    meeting = Meeting(**meeting_data.model_dump(), created_by=user["user_id"])
+    meeting_dict = meeting.model_dump()
+    for key, value in meeting_dict.items():
+        if isinstance(value, Enum):
+            meeting_dict[key] = value.value
+        elif isinstance(value, datetime):
+            meeting_dict[key] = value.isoformat()
+    await db.meetings.insert_one(meeting_dict)
+    result = await db.meetings.find_one({"meeting_id": meeting_dict["meeting_id"]}, {"_id": 0})
+    return deserialize_doc(result)
+
+@api_router.put("/meetings/{meeting_id}")
+async def update_meeting(meeting_id: str, meeting_data: MeetingUpdate, request: Request):
+    """Update a meeting"""
+    user = await require_auth(request)
+    existing = await db.meetings.find_one({"meeting_id": meeting_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    
+    if user["role"] == "CONSULTANT":
+        engagement = await db.engagements.find_one({"engagement_id": existing["engagement_id"]}, {"_id": 0})
+        if not engagement or engagement.get("consultant_user_id") != user["user_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    update_data = {k: v for k, v in meeting_data.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    for key, value in update_data.items():
+        if isinstance(value, Enum):
+            update_data[key] = value.value
+    
+    await db.meetings.update_one({"meeting_id": meeting_id}, {"$set": update_data})
+    result = await db.meetings.find_one({"meeting_id": meeting_id}, {"_id": 0})
+    return deserialize_doc(result)
+
+@api_router.delete("/meetings/{meeting_id}")
+async def delete_meeting(meeting_id: str, request: Request):
+    """Delete a meeting and its action items"""
+    user = await require_auth(request)
+    meeting = await db.meetings.find_one({"meeting_id": meeting_id}, {"_id": 0})
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    
+    if user["role"] == "CONSULTANT":
+        engagement = await db.engagements.find_one({"engagement_id": meeting["engagement_id"]}, {"_id": 0})
+        if not engagement or engagement.get("consultant_user_id") != user["user_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.meetings.delete_one({"meeting_id": meeting_id})
+    await db.action_items.delete_many({"meeting_id": meeting_id})
+    return {"message": "Meeting deleted"}
+
+# ===================== ACTION ITEM ENDPOINTS =====================
+@api_router.get("/action-items")
+async def get_action_items(request: Request, engagement_id: Optional[str] = None, meeting_id: Optional[str] = None):
+    """Get action items, optionally filtered"""
+    user = await require_auth(request)
+    query = {}
+    if engagement_id:
+        query["engagement_id"] = engagement_id
+    if meeting_id:
+        query["meeting_id"] = meeting_id
+    items = await db.action_items.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return [deserialize_doc(i) for i in items]
+
+@api_router.post("/action-items")
+async def create_action_item(item_data: ActionItemCreate, request: Request):
+    """Create a new action item"""
+    user = await require_auth(request)
+    item = ActionItem(**item_data.model_dump(), created_by=user["user_id"])
+    item_dict = item.model_dump()
+    for key, value in item_dict.items():
+        if isinstance(value, Enum):
+            item_dict[key] = value.value
+        elif isinstance(value, datetime):
+            item_dict[key] = value.isoformat()
+    await db.action_items.insert_one(item_dict)
+    result = await db.action_items.find_one({"action_item_id": item_dict["action_item_id"]}, {"_id": 0})
+    return deserialize_doc(result)
+
+@api_router.put("/action-items/{action_item_id}")
+async def update_action_item(action_item_id: str, item_data: ActionItemUpdate, request: Request):
+    """Update an action item"""
+    user = await require_auth(request)
+    existing = await db.action_items.find_one({"action_item_id": action_item_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Action item not found")
+    
+    if user["role"] == "CONSULTANT":
+        engagement = await db.engagements.find_one({"engagement_id": existing["engagement_id"]}, {"_id": 0})
+        if not engagement or engagement.get("consultant_user_id") != user["user_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    update_data = {k: v for k, v in item_data.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    for key, value in update_data.items():
+        if isinstance(value, Enum):
+            update_data[key] = value.value
+    
+    await db.action_items.update_one({"action_item_id": action_item_id}, {"$set": update_data})
+    result = await db.action_items.find_one({"action_item_id": action_item_id}, {"_id": 0})
+    return deserialize_doc(result)
+
+@api_router.delete("/action-items/{action_item_id}")
+async def delete_action_item(action_item_id: str, request: Request):
+    """Delete an action item"""
+    user = await require_auth(request)
+    item = await db.action_items.find_one({"action_item_id": action_item_id}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Action item not found")
+    
+    if user["role"] == "CONSULTANT":
+        engagement = await db.engagements.find_one({"engagement_id": item["engagement_id"]}, {"_id": 0})
+        if not engagement or engagement.get("consultant_user_id") != user["user_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.action_items.delete_one({"action_item_id": action_item_id})
+    return {"message": "Action item deleted"}
+
 # ===================== ENGAGEMENT 4-BLOCKER OVERVIEW =====================
 @api_router.get("/engagements/{engagement_id}/four-blocker")
 async def get_engagement_four_blocker(engagement_id: str, request: Request):
@@ -1515,6 +1738,10 @@ async def get_engagement_four_blocker(engagement_id: str, request: Request):
     
     # Get issues
     issues = await db.issues.find({"engagement_id": engagement_id}, {"_id": 0}).to_list(100)
+    
+    # Get meetings and action items
+    meetings = await db.meetings.find({"engagement_id": engagement_id}, {"_id": 0}).to_list(200)
+    action_items = await db.action_items.find({"engagement_id": engagement_id}, {"_id": 0}).to_list(500)
     
     # Calculate milestone stats
     total_milestones = len(milestones)
@@ -1562,6 +1789,31 @@ async def get_engagement_four_blocker(engagement_id: str, request: Request):
     risk_summary = _generate_risk_summary(risks, open_risks, high_risks)
     issue_summary = _generate_issue_summary(issues, open_issues, critical_issues, high_issues)
     
+    # Meeting & action item stats
+    upcoming_meetings = [m for m in meetings if m.get("status") == "SCHEDULED"]
+    completed_meetings = [m for m in meetings if m.get("status") == "COMPLETED"]
+    open_action_items = [a for a in action_items if a.get("status") != "DONE"]
+    overdue_action_items = []
+    for ai in open_action_items:
+        ai_due = ai.get("due_date")
+        if ai_due:
+            if isinstance(ai_due, str):
+                try:
+                    ai_due_dt = datetime.fromisoformat(ai_due.replace('Z', '+00:00'))
+                except Exception:
+                    continue
+            else:
+                ai_due_dt = ai_due
+            if ai_due_dt.tzinfo is None:
+                ai_due_dt = ai_due_dt.replace(tzinfo=timezone.utc)
+            if ai_due_dt < today:
+                overdue_action_items.append(ai)
+    
+    meetings_summary = {
+        "status": "CRITICAL" if len(overdue_action_items) > 2 else "ATTENTION" if len(overdue_action_items) > 0 else "HEALTHY",
+        "message": f"{len(upcoming_meetings)} upcoming meeting(s), {len(completed_meetings)} completed. {len(open_action_items)} open action item(s), {len(overdue_action_items)} overdue."
+    }
+    
     return {
         "engagement_id": engagement_id,
         "engagement_name": engagement.get("engagement_name"),
@@ -1595,6 +1847,19 @@ async def get_engagement_four_blocker(engagement_id: str, request: Request):
             "high": len(high_issues),
             "open_issues": open_issues[:5],
             "summary": issue_summary
+        },
+        "meetings_block": {
+            "total": len(meetings),
+            "upcoming": len(upcoming_meetings),
+            "completed": len(completed_meetings),
+            "summary": meetings_summary
+        },
+        "action_items_block": {
+            "total": len(action_items),
+            "open": len(open_action_items),
+            "overdue": len(overdue_action_items),
+            "done": len([a for a in action_items if a.get("status") == "DONE"]),
+            "summary": meetings_summary
         }
     }
 
