@@ -113,7 +113,10 @@ export default function ConsultantDashboard() {
         headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify({ ...data, engagement_id: engagement.engagement_id })
       });
-      if (!res.ok) throw new Error('Failed to save milestone');
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null);
+        throw new Error(errBody?.detail || `Failed to save milestone (${res.status})`);
+      }
       toast.success(data.milestone_id ? 'Milestone updated' : 'Milestone created');
       setMilestoneDialog({ open: false, data: null });
       fetchData();

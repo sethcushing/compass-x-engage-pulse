@@ -1236,6 +1236,16 @@ async def update_milestone(milestone_id: str, milestone_data: MilestoneUpdate, r
     """Update a milestone (cannot change due_date directly - use /change-date endpoint)"""
     user = await require_auth(request)
     
+    existing = await db.milestones.find_one({"milestone_id": milestone_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Milestone not found")
+    
+    # Consultants can only update milestones on their own engagement
+    if user["role"] == "CONSULTANT":
+        engagement = await db.engagements.find_one({"engagement_id": existing["engagement_id"]}, {"_id": 0})
+        if not engagement or engagement.get("consultant_user_id") != user["user_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
     update_data = {k: v for k, v in milestone_data.model_dump().items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
